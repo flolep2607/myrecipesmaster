@@ -13,7 +13,8 @@
 
 Weekly:  0 7 * * 1  cd ~/recipes && ./tools/pns_db.py sync >> data/sync.log 2>&1
 """
-import json, re, sqlite3, subprocess, sys, time, urllib.error
+import json, re, sqlite3, subprocess, sys, threading, time, urllib.error
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 
@@ -80,6 +81,7 @@ class Api:
 
     def __init__(self):
         self.tok = pns.token()
+        self.lock = threading.Lock()      # enrich runs this from several threads
 
     def _retry(self, fn):
         try:
@@ -87,7 +89,8 @@ class Api:
         except urllib.error.HTTPError as e:
             if e.code != 401:
                 raise
-            self.tok = pns.token()
+            with self.lock:               # one refresh, not one per thread
+                self.tok = pns.token()
             return fn(self.tok)
 
     def search(self, store, page, filt):
@@ -189,40 +192,57 @@ def nutrition_of(detail):
 
 
 def cmd_enrich(args):
-    """Fill ean/ingredients/nutrition from the per-product endpoint. Only touches products
-    never detailed before, so the weekly run costs one request per genuinely new product."""
+    """Fill ean/ingredients/nutrition from the per-product endpoint. Only touches products never
+    detailed before, so the weekly run costs one request per genuinely new product.
+    `enrich <n>` details only n, `-j <n>` sets how many at once (the endpoint takes ~1.6s each,
+    so serial means hours; the writes stay on this thread, sqlite has one writer)."""
+    workers = int(args[args.index("-j") + 1]) if "-j" in args else 8
+    args = [a for a in args if a != "-j" and not (a.isdigit() and args[args.index(a) - 1] == "-j")]
     conn, api = db(), Api()
     store = pns.my_stores()[0][0]
-    limit = int(args[0]) if args else 0
+    limit = int(args[0]) if args and args[0].isdigit() else 0
     todo = [r[0] for r in conn.execute(
         "SELECT product_id FROM products WHERE detailed IS NULL ORDER BY product_id")]
     if limit:
         todo = todo[:limit]
-    print(f"{len(todo)} products to detail", flush=True)
-    day, done, with_nut = date.today().isoformat(), 0, 0
-    for pid in todo:
+    print(f"{len(todo)} products to detail, {workers} at a time", flush=True)
+    day, done, with_nut, failed, t0 = date.today().isoformat(), 0, 0, 0, time.time()
+
+    def detail(pid):
         try:
-            d = api.product(store, pid)
-        except urllib.error.HTTPError as e:
-            conn.execute("UPDATE products SET detailed = ? WHERE product_id = ?", (f"{day} http{e.code}", pid))
-            continue
-        nut = nutrition_of(d)
-        conn.execute("UPDATE products SET ean = ?, ingredients = ?, detailed = ? WHERE product_id = ?",
-                     (d.get("sku"), d.get("ingredientStatement"), day, pid))
-        if nut:
-            with_nut += 1
-            conn.execute(
-                "INSERT OR REPLACE INTO nutrition(product_id,basis,kcal,protein,carbs,sugars,fat,sat_fat,fibre,sodium_mg)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?)",
-                (pid, nut.get("basis"), nut.get("kcal"), nut.get("protein"), nut.get("carbs"),
-                 nut.get("sugars"), nut.get("fat"), nut.get("sat_fat"), nut.get("fibre"), nut.get("sodium_mg")))
-        done += 1
-        if done % 25 == 0:
-            conn.commit()
-            print(f"\r  {done}/{len(todo)}  {with_nut} with nutrition", end="", flush=True)
-        time.sleep(PAUSE)
+            return pid, api.product(store, pid), None
+        except Exception as e:
+            code = getattr(e, "code", type(e).__name__)
+            return pid, None, f"{day} {code}"
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for pid, d, err in pool.map(detail, todo):
+            if err:
+                failed += 1
+                conn.execute("UPDATE products SET detailed = ? WHERE product_id = ?", (err, pid))
+            else:
+                nut = nutrition_of(d)
+                conn.execute("UPDATE products SET ean = ?, ingredients = ?, detailed = ? "
+                             "WHERE product_id = ?",
+                             (d.get("sku"), d.get("ingredientStatement"), day, pid))
+                if nut:
+                    with_nut += 1
+                    conn.execute(
+                        "INSERT OR REPLACE INTO nutrition(product_id,basis,kcal,protein,carbs,"
+                        "sugars,fat,sat_fat,fibre,sodium_mg) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        (pid, nut.get("basis"), nut.get("kcal"), nut.get("protein"),
+                         nut.get("carbs"), nut.get("sugars"), nut.get("fat"), nut.get("sat_fat"),
+                         nut.get("fibre"), nut.get("sodium_mg")))
+            done += 1
+            if done % 100 == 0:
+                conn.commit()
+                rate = done / max(time.time() - t0, 1)
+                left = (len(todo) - done) / max(rate, 0.01) / 60
+                print(f"  {done}/{len(todo)}  {with_nut} with nutrition, {failed} failed, "
+                      f"{rate:.1f}/s, ~{left:.0f} min left", flush=True)
     conn.commit()
-    print(f"\r  detailed {done}, {with_nut} with nutrition" + " " * 20)
+    print(f"detailed {done - failed}, {with_nut} with nutrition, {failed} failed, "
+          f"{(time.time() - t0) / 60:.1f} min")
 
 
 def cmd_sync(_):
