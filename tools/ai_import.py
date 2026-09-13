@@ -53,7 +53,9 @@ cuisine: <e.g. Thai — drop this line if the source does not say>
 tags: <two to five, from the list at the bottom, comma separated>
 image: <the image url if the source gave one, otherwise drop this line>
 source: {url}
-time: <1h30m form, no plurals>
+prep time: <hands-on time in 1h30m form, no plurals>
+cook time: <unattended time, same form>
+time: <total, same form — only when the source gives no prep/cook split, never alongside them>
 ---
 
 Then the steps, one paragraph per step, with ingredients as @name{{qty%unit}},
@@ -105,8 +107,8 @@ def scrape(url):
         from recipe_scrapers import scrape_me
         r = scrape_me(url)
         got = {}
-        for f in ("title", "yields", "total_time", "cuisine", "category", "image",
-                  "ingredients", "instructions"):
+        for f in ("title", "yields", "total_time", "prep_time", "cook_time", "cuisine",
+                  "category", "image", "ingredients", "instructions"):
             try:
                 got[f] = getattr(r, f)()
             except Exception:

@@ -445,10 +445,10 @@ def candidates(conn, term, store, limit=10):
         _, _, name, c0, c1, c2, cents, unit_cents, measure = r
         recall, extra = cat_score(tw, c1, c2)
         per, _ = per_base(unit_cents, measure)
-        return (head not in words(name) | words(f"{c1 or ''} {c2 or ''}"),
-                # mouthwash is called Fresh Mint too, so drop the non-food aisles before any
-                # name match is considered
+        return (# mouthwash is called Fresh Mint too, and "Roll On & Stick Deodorants" carries the
+                # head noun of "celery stick", so the non-food aisles go before any name match
                 (c0 or "").lower() in NON_FOOD,
+                head not in words(name) | words(f"{c1 or ''} {c2 or ''}"),
                 # a product literally called Onion Powder beats the best-matching shelf category,
                 # because plenty of ingredients have no category of their own
                 not tw <= words(name),
