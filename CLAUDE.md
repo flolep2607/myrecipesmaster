@@ -115,7 +115,16 @@ the time limit. Every hit is a real page. Import the ones you like with
 `./tools/ai_import.py <url>`; a Federation URL is a plain download, no model involved, unless the
 file does not parse here — other people's Cooklang carries Danish spoons and bare `~` meaning
 "about" — in which case the recipe is rewritten and the source kept.
-`./tools/ai_import.py find "<words>"` searches the web sites and `cook "<words>"` the Federation. Prefer sourced recipes; `ai_import.py "<brief>"` writes one from a description, but that is a
+`./tools/ai_import.py find "<words>"` searches the web sites and `cook "<words>"` the Federation.
+
+**Google Programmable Search** (optional, replaces the two built-in site searches) — one query
+across every site recipe-scrapers can parse, instead of scraping two search pages. Create an engine
+at programmablesearchengine.google.com, paste the 725 domains in `docs/cse-sites.txt` into "Sites to
+search" (regenerate that list with the one-liner in its header), get a Custom Search JSON API key at
+console.cloud.google.com, then put the key on the first line of `config/google.cse` and the engine
+id (cx) on the second (gitignored). 100 queries a day are free — check current pricing beyond that.
+`find` uses it when the file is there and falls back to BBC Good Food and Marmiton when it is not,
+so nothing breaks if the quota runs out. Prefer sourced recipes; `ai_import.py "<brief>"` writes one from a description, but that is a
 fallback for when nothing suitable is online. French sources are fine — imports are written in
 English so the names match `config/aisle.conf` and `config/products.map`.
 

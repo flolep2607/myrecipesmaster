@@ -108,6 +108,8 @@ UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/1
 
 
 FED = "https://recipes.cooklang.org"   # the Cooklang Federation: 8000+ recipes already in .cook
+CSE_FILE = ROOT / "config/google.cse"   # two lines: api key, then the engine id (cx)
+CSE = "https://www.googleapis.com/customsearch/v1"
 
 
 def fetch(url, timeout=30):
@@ -129,10 +131,30 @@ def federation(query, limit=10):
     return out[:limit]
 
 
+def cse(query, limit=8):
+    """Google Programmable Search across every site in docs/cse-sites.txt. 100 queries a day free.
+    Returns [] when it is not configured, and the two built-in site searches take over."""
+    if not CSE_FILE.exists():
+        return []
+    parts = CSE_FILE.read_text().split()
+    if len(parts) < 2:
+        return []
+    key, cx = parts[0], parts[1]
+    try:
+        r = json.loads(fetch(f"{CSE}?key={key}&cx={cx}&num={min(limit, 10)}"
+                             f"&q={urllib.parse.quote(query)}"))
+    except Exception as e:
+        print(f"google cse: {type(e).__name__} — falling back to site search", file=sys.stderr)
+        return []
+    return [i["link"] for i in r.get("items", [])][:limit]
+
+
 def find(query, limit=6):
-    """Real recipe URLs for a search term, a few from each site. Pages that exist, rather than a
-    model's memory of one."""
-    out = []
+    """Real recipe URLs for a search term. Google Programmable Search when it is set up, the two
+    built-in site searches otherwise. Pages that exist, rather than a model's memory of one."""
+    out = cse(query, limit)
+    if out:
+        return out
     for search, pattern in SITES:
         req = urllib.request.Request(search % urllib.parse.quote(query), headers=UA)
         try:

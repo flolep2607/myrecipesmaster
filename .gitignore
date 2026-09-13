@@ -5,3 +5,4 @@ config/gemini.keys
 .venv/
 __pycache__/
 config/omniroute.key
+config/google.cse
