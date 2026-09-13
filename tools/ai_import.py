@@ -26,9 +26,11 @@ Format:
 ---
 title: <dish name>
 servings: <number>
+course: <breakfast, lunch, dinner, dessert, snack or baking>
+cuisine: <e.g. Thai — drop this line if the source does not say>
 tags: <comma, separated>
 source: {url}
-time: <e.g. 45 minutes>
+time: <1h30m form, no plurals>
 ---
 
 Then the steps, one paragraph per step, with ingredients as @name{{qty%unit}},
