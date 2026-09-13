@@ -6,6 +6,7 @@
   ./tools/ai_import.py <url> -m gemini-3.8-pro      # default: gemini-3.8-flash
   ./tools/ai_import.py find "tofu stir fry"   # real recipe urls to import
   ./tools/ai_import.py cook tofu              # search recipes.cooklang.org, already cooklang
+  ./tools/ai_import.py have tofu "spring onion"  # recipes built from ingredients you have
   ./tools/ai_import.py selftest
 
 Use when `cook import` has no parser for the site, or the source is a video.
@@ -134,6 +135,28 @@ def federation(query, limit=10):
         if rid not in seen:
             seen.add(rid)
             out.append((f"{FED}/recipes/{rid}", title))
+    return out[:limit]
+
+
+RADAR = "https://www.reciperadar.com/api/recipes/search"   # openculinary, search by ingredient
+
+
+def radar(ingredients, limit=5, max_time=None):
+    """RecipeRadar searches by ingredient rather than words, which is the question we actually
+    have: what can I cook from this. Results carry the source page, the time and a normalised
+    ingredient list."""
+    query = urllib.parse.urlencode([("ingredients[]", i) for i in ingredients])
+    try:
+        found = json.loads(fetch(f"{RADAR}?{query}")).get("results", [])
+    except Exception as e:
+        print(f"reciperadar: {type(e).__name__}", file=sys.stderr)
+        return []
+    out = []
+    for r in found:
+        if max_time and (r.get("time") or 10 ** 4) > max_time:
+            continue
+        out.append({"title": r["title"], "url": r["dst"], "time": r.get("time"),
+                    "ingredients": [i["product"]["id"] for i in r.get("ingredients", [])]})
     return out[:limit]
 
 
@@ -310,6 +333,9 @@ if __name__ == "__main__":
         selftest()
     elif args[:1] == ["find"]:
         print("\n".join(find(" ".join(args[1:]))))
+    elif args[:1] == ["have"]:
+        for r in radar(args[1:], limit=8):
+            print(f"{r['time'] or '?':>4} min  {r['title'][:44]:46} {r['url']}")
     elif args[:1] == ["cook"]:
         for u, title in federation(" ".join(args[1:])):
             print(f"{title}\n  {u}")

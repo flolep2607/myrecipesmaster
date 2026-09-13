@@ -109,9 +109,12 @@ lists what it skipped. Products with no shelf unit price fall back to the pack s
 
 **Ideas from the specials** — `./tools/pns_db.py ideas -n 5 [-t 30]` takes this week's specials at
 the default store (cheapest per shelf, a few per aisle, one per product family, nothing that is
-already a finished meal), searches recipes.cooklang.org (the Cooklang Federation, 8000+ recipes
-already in .cook), BBC Good Food and Marmiton for each, and lists the web ones that come in under
-the time limit. Every hit is a real page. Import the ones you like with
+already a finished meal) and searches, per special: recipes.cooklang.org (the Cooklang Federation,
+8000+ recipes already in .cook), then RecipeRadar, which searches by ingredient rather than by
+words and returns the source page, the time and a normalised ingredient list — results are ranked
+by how much of each recipe `config/products.map` can already price. The six site searches are the
+fallback when RecipeRadar has nothing. `./tools/ai_import.py have tofu "spring onion"` queries
+RecipeRadar directly. Every hit is a real page. Import the ones you like with
 `./tools/ai_import.py <url>`; a Federation URL is a plain download, no model involved, unless the
 file does not parse here — other people's Cooklang carries Danish spoons and bare `~` meaning
 "about" — in which case the recipe is rewritten and the source kept.

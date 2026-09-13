@@ -544,7 +544,7 @@ def cmd_ideas(args):
     shelves = int(args[args.index("-n") + 1]) if "-n" in args else 5
     fast = int(args[args.index("-t") + 1]) if "-t" in args else 30
     conn, store = db(), pns.my_stores()[0]
-    deals = specials(conn, store[0])
+    pinned, deals = set(pins()), specials(conn, store[0])
     if not deals:
         sys.exit("no specials in the DB — run sync first")
     print(f"searching recipes for {shelves} of this week's specials at {store[1]}", file=sys.stderr)
@@ -554,7 +554,17 @@ def cmd_ideas(args):
         # already Cooklang, so importing one is a download: show those first
         for url, title in ai_import.federation(name, 3):
             print(f"   cooklang  {title[:44]:46} {url}")
-        for url in ai_import.find(name, 6):
+        # then RecipeRadar, which searches by ingredient rather than by words
+        word = singular(shelf.rsplit(" ", 1)[-1].lower())
+        found = ai_import.radar([word], limit=12, max_time=fast)
+        # the ones we can already price are the ones we can already shop for
+        found.sort(key=lambda r: -sum(1 for i in r["ingredients"] if i in pinned) / max(len(r["ingredients"]), 1))
+        for r in found[:3]:
+            known = sum(1 for i in r["ingredients"] if i in pinned)
+            print(f"  {r['time']:>3} min  {r['title'][:44]:46} {r['url'][:58]}"
+                  f"  {known}/{len(r['ingredients'])} priced")
+            hits += 1
+        for url in ai_import.find(name, 2) if not hits else []:
             data = ai_import.scrape(url)
             if not data:
                 continue
@@ -562,7 +572,7 @@ def cmd_ideas(args):
             mins = d.get("total_time") or 0
             if not mins or mins > fast:
                 continue
-            print(f"  {mins:>3} min  {d.get('title', '?')[:44]:46} {url}")
+            print(f"  {mins:>3} min  {d.get('title', '?')[:44]:46} {url[:58]}")
             hits += 1
             if hits == 3:
                 break
