@@ -25,16 +25,17 @@ docs/               vendored cooklang spec/conventions/extensions, `./docs/refre
 then read it back and fix the parse: ingredients must be `@name{qty%unit}`, cookware `#pan{}`,
 timers `~{10%minutes}`. Add frontmatter: `title`, `servings`, `tags`, `source`, `time`.
 If `cook import` fails on the site, `./tools/ai_import.py <url> > recipes/<course>/<Name>.cook`
-does it with Gemini — same for YouTube links, which it reads as video. Keys go one per line
+does it with a model — same for YouTube links, which Gemini reads as video. Keys go one per line
 in `config/gemini.keys` (gitignored); it starts on a random one and rotates past quota errors.
 Web pages go through recipe-scrapers first (~660 sites, installed in `.venv`, gitignored —
 rebuild with `uv venv --python /usr/bin/python3 .venv && uv pip install --python .venv/bin/python
 'recipe-scrapers[online]'`), so the model only writes markup around fields it was handed; a site
 recipe-scrapers doesn't know falls back to Gemini reading the page itself.
-Once the fields are scraped, writing the markup is plain text work and goes to the free
-OpenAI-compatible endpoint in `config/omniroute.key` (model `free`, gitignored); Gemini is kept
-for what only it can do — reading a page, watching a video — and for anything the free endpoint
-drops. Read the output back and check the parse either way.
+Writing the markup is plain text work and goes to the free OpenAI-compatible endpoint in
+`config/omniroute.key` (model `free`, gitignored, unlimited), and so is reading a page
+recipe-scrapers has no parser for — the page text is fetched and stripped locally. Gemini is kept
+for the one thing only it can do, watching a video, and as the fallback when the free endpoint
+drops a request. Read the output back and check the parse either way.
 
 **Weekly plan** — write `plans/YYYY-WW.md` listing one recipe per day with its scale
 (`Name.cook:2`). Then one shopping list for the whole week:
@@ -120,18 +121,17 @@ file does not parse here — other people's Cooklang carries Danish spoons and b
 "about" — in which case the recipe is rewritten and the source kept.
 `./tools/ai_import.py find "<words>"` searches the web sites and `cook "<words>"` the Federation.
 
-**Google Programmable Search** (optional, if you can still get a key — the JSON endpoint answers
-"needs an API key" rather than 404, but new Custom Search API keys may no longer be issued) — one query
-across every site recipe-scrapers can parse, instead of scraping two search pages. Create an engine
-at programmablesearchengine.google.com, paste the 725 domains in `docs/cse-sites.txt` into "Sites to
-search" (regenerate that list with the one-liner in its header), get a Custom Search JSON API key at
-console.cloud.google.com, then put the key on the first line of `config/google.cse` and the engine
-id (cx) on the second (gitignored). 100 queries a day are free — check current pricing beyond that.
-`find` uses it when the file is there and falls back to the six built-in site searches when it is
-not, so nothing breaks if the quota runs out: BBC Good Food, BBC Food, Marmiton, Budget Bytes,
-RecipeTin Eats and The Woks of Life, all parseable by recipe-scrapers. Prefer sourced recipes; `ai_import.py "<brief>"` writes one from a description, but that is a
+Prefer sourced recipes; `ai_import.py "<brief>"` writes one from a description, but that is a
 fallback for when nothing suitable is online. French sources are fine — imports are written in
-English so the names match `config/aisle.conf` and `config/products.map`.
+English so the names match `config/aisle.conf` and `config/products.map`. The site searches are
+BBC Good Food, BBC Food, Marmiton, Budget Bytes, RecipeTin Eats and The Woks of Life, all
+parseable by recipe-scrapers.
+
+**Pictures** — `./tools/ai_import.py image "recipes/dinner/Name.cook"` saves the recipe's picture
+beside it as `Name.jpg`, which is the convention `cook server` and the apps read. Imports carry an
+`image:` url in the frontmatter; older files get one looked up from their `source:` page, and a
+YouTube source uses the video thumbnail. Some sites (Marmiton) refuse hotlinks — the url stays in
+the file, only the download fails.
 
 **Which store** — `./tools/pns_db.py basket <recipe>[:scale] ...` totals a whole list at each
 configured store, cheapest first. An ingredient that isn't stocked at every store is left out of

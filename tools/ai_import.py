@@ -7,6 +7,7 @@
   ./tools/ai_import.py find "tofu stir fry"   # real recipe urls to import
   ./tools/ai_import.py cook tofu              # search recipes.cooklang.org, already cooklang
   ./tools/ai_import.py have tofu "spring onion"  # recipes built from ingredients you have
+  ./tools/ai_import.py image "recipes/dinner/Name.cook"   # fetch its picture alongside it
   ./tools/ai_import.py selftest
 
 Use when `cook import` has no parser for the site, or the source is a video.
@@ -47,6 +48,7 @@ servings: <number>
 course: <breakfast, lunch, dinner, dessert, snack or baking>
 cuisine: <e.g. Thai — drop this line if the source does not say>
 tags: <comma, separated>
+image: <the image url if the source gave one, otherwise drop this line>
 source: {url}
 time: <1h30m form, no plurals>
 ---
@@ -89,7 +91,8 @@ def scrape(url):
         from recipe_scrapers import scrape_me
         r = scrape_me(url)
         got = {}
-        for f in ("title", "yields", "total_time", "cuisine", "category", "ingredients", "instructions"):
+        for f in ("title", "yields", "total_time", "cuisine", "category", "image",
+                  "ingredients", "instructions"):
             try:
                 got[f] = getattr(r, f)()
             except Exception:
@@ -115,8 +118,6 @@ UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/1
 
 
 FED = "https://recipes.cooklang.org"   # the Cooklang Federation: 8000+ recipes already in .cook
-CSE_FILE = ROOT / "config/google.cse"   # two lines: api key, then the engine id (cx)
-CSE = "https://www.googleapis.com/customsearch/v1"
 
 
 def fetch(url, timeout=30):
@@ -160,24 +161,6 @@ def radar(ingredients, limit=5, max_time=None):
     return out[:limit]
 
 
-def cse(query, limit=8):
-    """Google Programmable Search across every site in docs/cse-sites.txt. 100 queries a day free.
-    Returns [] when it is not configured, and the two built-in site searches take over."""
-    if not CSE_FILE.exists():
-        return []
-    parts = CSE_FILE.read_text().split()
-    if len(parts) < 2:
-        return []
-    key, cx = parts[0], parts[1]
-    try:
-        r = json.loads(fetch(f"{CSE}?key={key}&cx={cx}&num={min(limit, 10)}"
-                             f"&q={urllib.parse.quote(query)}"))
-    except Exception as e:
-        print(f"google cse: {type(e).__name__} — falling back to site search", file=sys.stderr)
-        return []
-    return [i["link"] for i in r.get("items", [])][:limit]
-
-
 def recipe_slug(url):
     """WordPress search pages link their own plumbing — /feed/, /wp-includes/, /tachyon/ — beside
     the recipes. A recipe permalink there is a multi-word slug ending in a slash."""
@@ -188,11 +171,9 @@ def recipe_slug(url):
 
 
 def find(query, limit=3):
-    """Real recipe URLs for a search term. Google Programmable Search when it is set up, the two
-    built-in site searches otherwise. Pages that exist, rather than a model's memory of one."""
-    out = cse(query, limit)
-    if out:
-        return out
+    """Real recipe URLs for a search term, a few from each site. Pages that exist, rather than a
+    model's memory of one."""
+    out = []
     for search, pattern in SITES:
         req = urllib.request.Request(search % urllib.parse.quote(query), headers=UA)
         try:
@@ -205,6 +186,46 @@ def find(query, limit=3):
                 if recipe_slug(u)]
         out += urls[:limit]
     return out
+
+
+def page_text(url, cap=24000):
+    """The readable text of a page. recipe-scrapers covers 725 sites; for the rest this plus the
+    free endpoint beats spending a Gemini key on url_context."""
+    try:
+        page = fetch(url)
+    except Exception as e:
+        print(f"fetch {url}: {type(e).__name__}", file=sys.stderr)
+        return None
+    page = re.sub(r"(?s)<(script|style|nav|footer|header)\b.*?</\1>", " ", page)
+    text = html.unescape(re.sub(r"<[^>]+>", " ", page))
+    return re.sub(r"[ \t]*\n\s*", "\n", re.sub(r"[ \t]+", " ", text)).strip()[:cap] or None
+
+
+def image(cook_file):
+    """Download the recipe's image next to it, as the conventions want: Baked Potato.cook +
+    Baked Potato.jpg. Apps and `cook server` pick it up from there."""
+    path = Path(cook_file)
+    text = path.read_text()
+    found = re.search(r"^image:\s*(\S+)", text, re.M)
+    if not found:      # older imports have no image line: ask the source for one
+        src = re.search(r"^source:\s*(https?://\S+)", text, re.M)
+        vid = re.search(r"(?:youtu\.be/|v=|shorts/)([\w-]{11})", src[1]) if src else None
+        if vid:
+            url = f"https://img.youtube.com/vi/{vid[1]}/maxresdefault.jpg"
+        else:
+            url = (json.loads(scrape(src[1]) or "{}") if src else {}).get("image")
+        if not url:
+            return print(f"{path.name}: no image to fetch", file=sys.stderr)
+        path.write_text(text.replace("\nsource:", f"\nimage: {url}\nsource:", 1))
+    url = re.search(r"^image:\s*(\S+)", path.read_text(), re.M)[1]
+    ext = ".png" if url.lower().split("?")[0].endswith(".png") else ".jpg"
+    out = path.with_suffix(ext)
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r:
+            out.write_bytes(r.read())
+    except Exception as e:      # Marmiton and friends refuse hotlinks; the url stays in the file
+        return print(f"{path.name}: {type(e).__name__} fetching the image", file=sys.stderr)
+    print(f"{out.name}  {out.stat().st_size // 1024} KB")
 
 
 def parses(text):
@@ -302,7 +323,10 @@ def recipe(url, model):
                        or "") + "\n"
     if not is_url(url):   # a brief, not a page: the model writes the recipe from it
         return unfence(omni(prompt("kitchen idea", url, "What to cook")) or "") + "\n"
-    data = None if re.search(r"(youtube\.com|youtu\.be)/", url) else scrape(url)
+    video = re.search(r"(youtube\.com|youtu\.be)/", url)
+    data = None if video else scrape(url)
+    if not (data or video):
+        data = page_text(url)   # recipe-scrapers has no parser for this site: read it ourselves
     text = omni(prompt(url, data)) if data else None
     text = text or clean(gemini(body(url, data), model))
     text = unfence(text)
@@ -333,6 +357,8 @@ if __name__ == "__main__":
         selftest()
     elif args[:1] == ["find"]:
         print("\n".join(find(" ".join(args[1:]))))
+    elif args[:1] == ["image"]:
+        image(args[1])
     elif args[:1] == ["have"]:
         for r in radar(args[1:], limit=8):
             print(f"{r['time'] or '?':>4} min  {r['title'][:44]:46} {r['url']}")
