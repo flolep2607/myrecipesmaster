@@ -9,18 +9,21 @@
 | chicken breast | Skinless Chicken Breast kg | $14.99 | $1.50/100g | 170 g |  |
 | chili powder | Kashish Kashmiri Chilli Powder Spice 200g | $3.59 | $1.80/100g |  |  |
 | chilli flake | Mrs Rogers Naturals Eco Chilli Flakes 20g | $1.99 | $9.95/100g |  |  |
+| coconut milk | Trident Premium Coconut Milk 400ml | $2.00 | $0.50/100ml |  |  |
 | cold-pressed rapeseed oil | Pams Canola Oil 500ml | $1.79 | $0.36/100ml |  |  |
 | cooked white rice | Fortune Long Grain Rice 1kg | $2.00 | $0.20/100g |  |  |
 | coriander leaf | Healthy n Fresh Prepacked Coriander 80g | $2.49 | $3.11/100g |  |  |
 | cornflour | Pams Maize Cornflour 400g | $1.59 | $0.40/100g |  |  |
 | cucumber | Telegraph Cucumber ea | $3.00 | $3.00 each | 300 g |  |
 | cumin | Kashish Cumin Seeds 200g | $3.59 | $1.80/100g |  |  |
+| curry powder | Mrs Rogers Naturals Eco Curry Powder 40g | $1.99 | $4.97/100g |  |  |
 | egg | Woodland Free Range Size 6 Eggs 18pk | $9.99 | $0.56 each | 55 g |  |
 | egg white | Zeagold Egg White Natural Protein 980ml | $13.49 | $1.38/100ml |  |  |
 | egg whites | Zeagold Egg White Natural Protein 980ml | $13.49 | $1.38/100ml |  |  |
 | firm tofu | All Food Pure Bean Firm Tofu 300g | $1.20 | $0.40/100g |  |  |
 | flaked almond | Pams Sliced Almonds 70g | $2.49 | $3.56/100g |  |  |
 | fresh coriander | Healthy n Fresh Prepacked Coriander 80g | $2.49 | $3.11/100g |  |  |
+| fresh ginger | Crushed Ginger 1kg | $11.09 | $1.11/100g |  |  |
 | frozen mixed vegetables | Pams Mixed Veges 1kg | $3.29 | $0.33/100g |  |  |
 | garlic | Jinning Greenway White Garlic 450g | $1.00 | $0.22/100g | 4 g |  |
 | garlic clove | Jinning Greenway White Garlic 450g | $1.00 | $0.22/100g | 4 g |  |
@@ -33,19 +36,24 @@
 | ground turmeric | Masterfoods Ground Turmeric 34g | $2.59 | $7.62/100g |  |  |
 | honey | Pams Value Creamed Clover Blend Honey 1kg | $15.94 | $1.59/100g |  |  |
 | lemon | Lemons kg | $3.99 | $0.40/100g |  |  |
+| lemon juice | Lemons kg | $3.99 | $0.40/100g |  |  |
 | lemon wedges | Lemons kg | $3.99 | $0.40/100g | 120 g |  |
 | lime juice | Limes kg | $10.99 | $1.10/100g |  |  |
 | lime wedge | Limes kg | $10.99 | $1.10/100g | 50 g |  |
 | long-grain brown rice | SunRice Australian Brown Medium Grain Rice 5kg | $15.21 | $0.30/100g |  |  |
 | medium curry powder | Brindavin Medium Curry Powder 100g | $5.99 | $5.99/100g |  |  |
 | milk | Pams Standard UHT Milk 1l | $2.09 | $0.21/100ml |  |  |
+| oil | Pams Canola Oil 500ml | $1.79 | $0.36/100ml |  |  |
 | olive oil | Pams Pure Olive Oil 1l | $14.39 | $1.44/100ml |  |  |
 | onion | Brown Onions kg | $2.79 | $0.28/100g | 180 g |  |
 | onion powder | Mrs Rogers Naturals Eco Onion Powder Fine 40g | $1.99 | $4.97/100g |  |  |
+| peanut | Value Pack Roasted Salted Peanuts 400g | $4.29 | $1.07/100g |  |  |
+| peanut butter | Pams Smooth Peanut Butter 375g | $1.69 | $0.45/100g |  |  |
 | plain flour | Pams Pure Plain Flour 1.5kg | $2.19 | $0.15/100g |  |  |
 | plain wholemeal flour | Pams Wholemeal Flour 1.5kg | $2.19 | $0.15/100g |  |  |
 | red bell pepper | Red Capsicum ea | $2.99 | $2.99 each | 180 g |  |
 | red chilli | Check Red Chilli Vegetables 200g | $2.59 | $1.29/100g | 12 g |  |
+| red curry paste | Exotic Food Red Curry Paste 220g | $4.69 | $2.13/100g |  |  |
 | red pepper | Red Capsicum ea | $2.99 | $2.99 each | 180 g |  |
 | reduced sugar ketchup | Gregg's 60% Less Sugar Tomato Sauce 540g | $3.99 | $0.74/100g |  |  |
 | rice | Fortune Long Grain Rice 1kg | $2.00 | $0.20/100g |  |  |

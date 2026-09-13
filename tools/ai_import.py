@@ -5,6 +5,7 @@
   ./tools/ai_import.py "tempeh egg fried rice, 20 min, tempeh egg rice soy sauce"  # no url: a brief
   ./tools/ai_import.py <url> -m gemini-3.8-pro      # default: gemini-3.8-flash
   ./tools/ai_import.py find "tofu stir fry"   # real recipe urls to import
+  ./tools/ai_import.py cook tofu              # search recipes.cooklang.org, already cooklang
   ./tools/ai_import.py selftest
 
 Use when `cook import` has no parser for the site, or the source is a video.
@@ -22,7 +23,7 @@ comma-separated. A random key starts each run and quota/server errors fall
 through to the next one. config/omniroute.key holds the one free-endpoint key,
 or $OMNIROUTE_KEY.
 """
-import json, os, random, re, sys, urllib.error, urllib.parse, urllib.request
+import html, json, os, random, re, subprocess, sys, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,7 +57,8 @@ Rules:
 - Ingredient names lowercase and singular (@egg, @onion), multi-word ones need the braces: @olive oil{{2%tbsp}}.
 - Metric units (g, ml, tbsp, tsp), servings always a plain number. One amount per ingredient:
   no ranges and no "1 pinch, 2 tsp" — pick the amount the method actually uses.
-- Drop any metadata line you have nothing to put on it rather than leaving it empty.
+- Drop any metadata line you have nothing to put on it rather than leaving it empty, and never
+  emit a `>> [mode]: ...` line.
 - Write the recipe in English even when the source is not: the aisle file, the pantry and the
   product map are English. Keep the dish's own name if it has one (bolognaise, tartiflette).
 - Tag every ingredient the first time the method uses it; later mentions are references, @&name{{qty%unit}},
@@ -105,6 +107,28 @@ SITES = [("https://www.bbcgoodfood.com/search?q=%s",
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/125 Safari/537.36"}
 
 
+FED = "https://recipes.cooklang.org"   # the Cooklang Federation: 8000+ recipes already in .cook
+
+
+def fetch(url, timeout=30):
+    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
+        return r.read().decode("utf8", "ignore")
+
+
+def federation(query, limit=10):
+    """Search the Federation. These are already Cooklang, so importing one is a download —
+    nothing to convert, nothing for a model to invent."""
+    page = fetch(f"{FED}/?q={urllib.parse.quote(query)}")   # `html` is the stdlib module here
+    cards = re.findall(r'href="/recipes/(\d+)".*?<h3[^>]*>(.*?)</h3>', page, re.S)
+    out, seen = [], set()
+    for rid, title in cards:
+        title = html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", title)).strip())
+        if rid not in seen:
+            seen.add(rid)
+            out.append((f"{FED}/recipes/{rid}", title))
+    return out[:limit]
+
+
 def find(query, limit=6):
     """Real recipe URLs for a search term, a few from each site. Pages that exist, rather than a
     model's memory of one."""
@@ -120,6 +144,13 @@ def find(query, limit=6):
         urls = [u for u in dict.fromkeys(re.findall(pattern, html)) if "/category/" not in u]
         out += urls[:limit]
     return out
+
+
+def parses(text):
+    """Does our CookCLI accept this file? Shared recipes carry other people's units and habits."""
+    out = subprocess.run(["cook", "recipe", "-f", "json"], input=text,
+                         capture_output=True, text=True, cwd=ROOT)
+    return out.returncode == 0
 
 
 def is_url(s):
@@ -195,6 +226,19 @@ def recipe(url, model):
     """Scraped fields are plain text work for the free endpoint; reading the page
     or the video is Gemini's job, and so is anything the free endpoint drops.
     A brief instead of a URL is plain text work too — the model writes the recipe."""
+    fed = re.match(rf"{FED}/recipes/(\d+)", url)
+    if fed or url.endswith(".cook"):   # already Cooklang: take the file as written
+        text = fetch(f"{FED}/api/recipes/{fed[1]}/download" if fed else url)
+        # other people write "~1 cm" meaning roughly; our parser reads a bare ~ as a timer
+        text = re.sub(r"(?<!\\)~(?![^\n{]{0,20}\{)", r"\\~", text)
+        if not re.search(r"^source:", text, re.M):
+            text = f"---\nsource: {url}\n---\n\n{text}"
+        if parses(text):
+            return text
+        # someone else's Cooklang, in Danish with Danish spoons: keep the recipe, redo the markup
+        print("does not parse here — rewriting it", file=sys.stderr)
+        return unfence(omni(prompt(url, text, "Recipe to rewrite, keeping every step and amount"))
+                       or "") + "\n"
     if not is_url(url):   # a brief, not a page: the model writes the recipe from it
         return unfence(omni(prompt("kitchen idea", url, "What to cook")) or "") + "\n"
     data = None if re.search(r"(youtube\.com|youtu\.be)/", url) else scrape(url)
@@ -224,6 +268,9 @@ if __name__ == "__main__":
         selftest()
     elif args[:1] == ["find"]:
         print("\n".join(find(" ".join(args[1:]))))
+    elif args[:1] == ["cook"]:
+        for u, title in federation(" ".join(args[1:])):
+            print(f"{title}\n  {u}")
     elif not args:
         sys.exit(__doc__)
     else:

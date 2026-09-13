@@ -551,6 +551,9 @@ def cmd_ideas(args):
     for label, cents, unit, measure, _, shelf, name, _fam in deals[:shelves]:
         print(f"\n{name}  —  {label}  ${cents / 100:.2f}  (${unit / 100:.2f}/{measure})")
         hits = 0
+        # already Cooklang, so importing one is a download: show those first
+        for url, title in ai_import.federation(name, 3):
+            print(f"   cooklang  {title[:44]:46} {url}")
         for url in ai_import.find(name, 6):
             data = ai_import.scrape(url)
             if not data:

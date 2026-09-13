@@ -109,10 +109,13 @@ lists what it skipped. Products with no shelf unit price fall back to the pack s
 
 **Ideas from the specials** — `./tools/pns_db.py ideas -n 5 [-t 30]` takes this week's specials at
 the default store (cheapest per shelf, a few per aisle, one per product family, nothing that is
-already a finished meal), searches BBC Good Food and Marmiton for each, and lists the recipes that
-come in under the time limit. Every hit is a real page, verified by scraping it. Import the ones
-you like with `./tools/ai_import.py <url>`. `./tools/ai_import.py find "<words>"` searches on its
-own. Prefer sourced recipes; `ai_import.py "<brief>"` writes one from a description, but that is a
+already a finished meal), searches recipes.cooklang.org (the Cooklang Federation, 8000+ recipes
+already in .cook), BBC Good Food and Marmiton for each, and lists the web ones that come in under
+the time limit. Every hit is a real page. Import the ones you like with
+`./tools/ai_import.py <url>`; a Federation URL is a plain download, no model involved, unless the
+file does not parse here — other people's Cooklang carries Danish spoons and bare `~` meaning
+"about" — in which case the recipe is rewritten and the source kept.
+`./tools/ai_import.py find "<words>"` searches the web sites and `cook "<words>"` the Federation. Prefer sourced recipes; `ai_import.py "<brief>"` writes one from a description, but that is a
 fallback for when nothing suitable is online. French sources are fine — imports are written in
 English so the names match `config/aisle.conf` and `config/products.map`.
 
