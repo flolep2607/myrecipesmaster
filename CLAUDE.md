@@ -27,6 +27,10 @@ timers `~{10%minutes}`. Add frontmatter: `title`, `servings`, `tags`, `source`, 
 If `cook import` fails on the site, `./tools/ai_import.py <url> > recipes/<course>/<Name>.cook`
 does it with Gemini — same for YouTube links, which it reads as video. Keys go one per line
 in `config/gemini.keys` (gitignored); it starts on a random one and rotates past quota errors.
+Web pages go through recipe-scrapers first (~660 sites, installed in `.venv`, gitignored —
+rebuild with `uv venv --python /usr/bin/python3 .venv && uv pip install --python .venv/bin/python
+'recipe-scrapers[online]'`), so the model only writes markup around fields it was handed; a site
+recipe-scrapers doesn't know falls back to Gemini reading the page itself.
 Read the output back and check the parse either way.
 
 **Weekly plan** — write `plans/YYYY-WW.md` listing one recipe per day with its scale
