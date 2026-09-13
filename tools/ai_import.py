@@ -8,9 +8,17 @@
 Use when `cook import` has no parser for the site, or the source is a video.
 Web pages go through recipe-scrapers first (~660 sites, .venv) so the model only
 does the markup; sites it doesn't know fall back to Gemini reading the page.
+
+Two providers, because only one of them can do the hard half: once recipe-scrapers
+has the fields, writing markup is plain text work and goes to the OpenAI-compatible
+endpoint in config/omniroute.key (model `free`). Reading a page or watching a video
+needs Gemini, so YouTube links and unscrapable sites go there, and anything the free
+endpoint fumbles falls back to it too.
+
 Keys: config/gemini.keys, one per line (gitignored), or $GEMINI_API_KEYS
 comma-separated. A random key starts each run and quota/server errors fall
-through to the next one.
+through to the next one. config/omniroute.key holds the one free-endpoint key,
+or $OMNIROUTE_KEY.
 """
 import json, os, random, re, sys, urllib.error, urllib.request
 from pathlib import Path
@@ -19,6 +27,9 @@ ROOT = Path(__file__).resolve().parent.parent
 # recipe-scrapers lives in .venv; version-matched so a stale venv is skipped, not imported
 sys.path += [str(p) for p in ROOT.glob(".venv/lib/python%d.%d/site-packages" % sys.version_info[:2])]
 KEYS_FILE = ROOT / "config/gemini.keys"
+OMNI_KEY_FILE = ROOT / "config/omniroute.key"
+OMNI = "https://omniroute.masterchef.mom/v1/chat/completions"
+OMNI_MODEL = "free"
 SPEC = ROOT / "docs/extensions.md"
 API = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent"
 ROTATE_ON = {429, 403, 500, 503}
@@ -80,11 +91,15 @@ def scrape(url):
         return None
 
 
+def prompt(url, data):
+    return PROMPT.format(url=url, spec=SPEC.read_text(),
+                         data=f"\nFields extracted from the page:\n{data}\n" if data else "")
+
+
 def body(url, data=None):
     """YouTube goes in as video. A scraped page ships its fields; anything else
     is read by the url_context tool."""
-    text = PROMPT.format(url=url, spec=SPEC.read_text(),
-                         data=f"\nFields extracted from the page:\n{data}\n" if data else "")
+    text = prompt(url, data)
     if re.search(r"(youtube\.com|youtu\.be)/", url):
         return {"contents": [{"parts": [{"file_data": {"file_uri": url}}, {"text": text}]}]}
     if data:
@@ -92,8 +107,23 @@ def body(url, data=None):
     return {"contents": [{"parts": [{"text": text}]}], "tools": [{"url_context": {}}]}
 
 
-def generate(url, model):
-    data = None if re.search(r"(youtube\.com|youtu\.be)/", url) else scrape(url)
+def omni(text):
+    """The free OpenAI-compatible endpoint. None when it has no key or no answer."""
+    key = os.environ.get("OMNIROUTE_KEY") or (OMNI_KEY_FILE.read_text().strip() if OMNI_KEY_FILE.exists() else "")
+    if not key:
+        return None
+    req = urllib.request.Request(OMNI, data=json.dumps(
+        {"model": OMNI_MODEL, "messages": [{"role": "user", "content": text}]}).encode(),
+        headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
+    try:
+        with urllib.request.urlopen(req, timeout=600) as r:
+            return json.load(r)["choices"][0]["message"]["content"].strip() or None
+    except Exception as e:
+        print(f"free endpoint: {type(e).__name__}, falling back to gemini", file=sys.stderr)
+        return None
+
+
+def generate(url, data, model):
     payload = json.dumps(body(url, data)).encode()
     last = None
     for i, key in enumerate(keys()):
@@ -112,10 +142,22 @@ def generate(url, model):
 
 def clean(resp):
     parts = resp["candidates"][0].get("content", {}).get("parts", [])
-    text = "".join(p["text"] for p in parts if "text" in p).strip()
-    text = re.sub(r"\A```[a-z]*\n|\n```\Z", "", text).strip()
+    return "".join(p["text"] for p in parts if "text" in p).strip()
+
+
+def unfence(text):
+    return re.sub(r"\A```[a-z]*\n|\n```\Z", "", text.strip()).strip()
+
+
+def recipe(url, model):
+    """Scraped fields are plain text work for the free endpoint; reading the page
+    or the video is Gemini's job, and so is anything the free endpoint drops."""
+    data = None if re.search(r"(youtube\.com|youtu\.be)/", url) else scrape(url)
+    text = omni(prompt(url, data)) if data else None
+    text = text or clean(generate(url, data, model))
+    text = unfence(text)
     if not text:
-        sys.exit("empty response: " + json.dumps(resp)[:500])
+        sys.exit("empty response from both providers")
     return text + "\n"
 
 
@@ -125,7 +167,8 @@ def selftest():
     assert "url_context" in json.dumps(body("https://example.com/r"))
     scraped = json.dumps(body("https://example.com/r", '{"ingredients": ["1 egg"]}'))
     assert "url_context" not in scraped and "1 egg" in scraped
-    assert clean({"candidates": [{"content": {"parts": [{"text": "```cooklang\n@egg{1}\n```"}]}}]}) == "@egg{1}\n"
+    assert clean({"candidates": [{"content": {"parts": [{"text": " @egg{1} "}]}}]}) == "@egg{1}"
+    assert unfence("```cooklang\n@egg{1}\n```") == "@egg{1}"
     print("ok")
 
 
@@ -136,4 +179,4 @@ if __name__ == "__main__":
     elif not args:
         sys.exit(__doc__)
     else:
-        sys.stdout.write(clean(generate(args[0], args[1] if len(args) > 1 else "gemini-3.8-flash")))
+        sys.stdout.write(recipe(args[0], args[1] if len(args) > 1 else "gemini-3.8-flash"))

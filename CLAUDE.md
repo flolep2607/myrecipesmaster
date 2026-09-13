@@ -31,7 +31,10 @@ Web pages go through recipe-scrapers first (~660 sites, installed in `.venv`, gi
 rebuild with `uv venv --python /usr/bin/python3 .venv && uv pip install --python .venv/bin/python
 'recipe-scrapers[online]'`), so the model only writes markup around fields it was handed; a site
 recipe-scrapers doesn't know falls back to Gemini reading the page itself.
-Read the output back and check the parse either way.
+Once the fields are scraped, writing the markup is plain text work and goes to the free
+OpenAI-compatible endpoint in `config/omniroute.key` (model `free`, gitignored); Gemini is kept
+for what only it can do — reading a page, watching a video — and for anything the free endpoint
+drops. Read the output back and check the parse either way.
 
 **Weekly plan** — write `plans/YYYY-WW.md` listing one recipe per day with its scale
 (`Name.cook:2`). Then one shopping list for the whole week:
