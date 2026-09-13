@@ -504,8 +504,8 @@ def cmd_ingredient(args):
             print(f"  -p {n}  {lab}  ${c / 100:.2f}" + (f"  ${uc / 100:.2f}/{m}" if uc else ""))
 
 
-COOKING = ("Fruit & Vegetables", "Meat, Poultry & Seafood", "Fridge, Deli & Eggs",
-           "Pantry", "Frozen")
+COOKING = ("Meat, Poultry & Seafood", "Fruit & Vegetables", "Fridge, Deli & Eggs",
+           "Frozen", "Pantry")
 # shelves that sell a finished meal rather than something to cook with
 PREPARED = ("meal", "pie", "pizza", "soup", "risotto", "dessert", "snack", "chip", "biscuit",
             "cake", "pastry", "roll", "wrap", "sandwich", "sushi", "ice cream", "drink", "juice")
@@ -516,57 +516,56 @@ def specials(conn, store, per_aisle=6):
     list is not all deli cheese, and nothing that is already a finished meal."""
     rows = conn.execute(
         "SELECT trim(ifnull(p.brand,'') || ' ' || p.name || ' ' || ifnull(p.size,'')), pr.cents,"
-        "       pr.unit_cents, pr.unit_measure, p.category0, p.category2 "
+        "       pr.unit_cents, pr.unit_measure, p.category0, p.category2, p.name, p.category1 "
         "FROM products p JOIN prices pr ON pr.product_id = p.product_id "
         "WHERE pr.store_id = ? AND pr.day = (SELECT max(day) FROM prices) AND pr.promo = 1 "
         f"  AND p.category0 IN ({','.join('?' * len(COOKING))}) AND pr.unit_cents IS NOT NULL "
         f"  AND {' AND '.join(['lower(p.category2) NOT LIKE ?'] * len(PREPARED))} "
         "ORDER BY pr.unit_cents",
         (store, *COOKING, *(f"%{w}%" for w in PREPARED))).fetchall()
-    best, count = {}, {}
+    best, aisle, family = {}, {}, {}
     for r in rows:                      # rows are cheapest-first, so the first per shelf wins
-        if r[5] not in best and count.get(r[4], 0) < per_aisle:
-            best[r[5]] = r
-            count[r[4]] = count.get(r[4], 0) + 1
-    return list(best.values())
+        # cap the family too, or three shelves of Hellers sausages crowd everything else out
+        fam = (r[5] or "").rsplit(" ", 1)[-1].lower()   # Beef/Lamb/Pork Sausages are one idea
+        if r[5] in best or aisle.get(r[4], 0) >= per_aisle or family.get(fam, 0) >= 1:
+            continue
+        best[r[5]] = r
+        aisle[r[4]] = aisle.get(r[4], 0) + 1
+        family[fam] = family.get(fam, 0) + 1
+    # protein and produce first: the cheapest specials by weight are always flour and sugar
+    return sorted(best.values(), key=lambda r: COOKING.index(r[4]))
 
 
 def cmd_ideas(args):
-    """Ask the model for fast, easy dinners built on this week's specials, then check every
-    ingredient it names against what this store actually stocks."""
+    """Real recipe pages for what is on special this week: search the shelf name, keep the fast
+    ones, and show what each would cost to buy. Import the ones you like with ai_import."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import ai_import
-    n = int(args[args.index("-n") + 1]) if "-n" in args else 6
+    shelves = int(args[args.index("-n") + 1]) if "-n" in args else 5
+    fast = int(args[args.index("-t") + 1]) if "-t" in args else 30
     conn, store = db(), pns.my_stores()[0]
     deals = specials(conn, store[0])
     if not deals:
         sys.exit("no specials in the DB — run sync first")
-    listed = "\n".join(f"- {label}  ${cents / 100:.2f}  (${unit / 100:.2f}/{measure})"
-                        for label, cents, unit, measure, _, _ in deals)
-    print(f"{len(deals)} specials at {store[1]}, asking for {n} ideas...", file=sys.stderr)
-    reply = ai_import.omni(
-        f"On special this week at PAK'nSAVE {store[1]}, New Zealand:\n{listed}\n\n"
-        f"Suggest {n} dinners that are genuinely fast (30 minutes or less) and easy: few steps, "
-        "no special equipment. Real cooking from raw ingredients — the specials should be the "
-        "protein, the vegetable or the dairy, never a ready-made meal reheated. Each must build "
-        "on at least two of the products above. Assume the "
-        "usual staples are in the cupboard (salt, pepper, oil, flour, soy sauce, garlic, onion, "
-        "rice, pasta, eggs).\n\nOne dinner per line, exactly:\n"
-        "Title | minutes | ingredient, ingredient, ...\n"
-        "Ingredient names lowercase and singular, no quantities, no brands. No other text.")
-    if not reply:
-        sys.exit("no answer from the free endpoint (config/omniroute.key)")
-    for line in reply.splitlines():
-        parts = [f.strip() for f in line.split("|")]
-        if len(parts) != 3:
-            continue
-        title, mins, items = parts
-        missing = [i for i in (x.strip() for x in items.split(",") if x.strip())
-                   if not candidates(conn, i, store[0], 1)]
-        print(f"\n{title}  —  {mins}")
-        print(f"  {items}")
-        if missing:
-            print(f"  not stocked at {store[1]}: {', '.join(missing)}")
+    print(f"searching recipes for {shelves} of this week's specials at {store[1]}", file=sys.stderr)
+    for label, cents, unit, measure, _, shelf, name, _fam in deals[:shelves]:
+        print(f"\n{name}  —  {label}  ${cents / 100:.2f}  (${unit / 100:.2f}/{measure})")
+        hits = 0
+        for url in ai_import.find(name, 6):
+            data = ai_import.scrape(url)
+            if not data:
+                continue
+            d = json.loads(data)
+            mins = d.get("total_time") or 0
+            if not mins or mins > fast:
+                continue
+            print(f"  {mins:>3} min  {d.get('title', '?')[:44]:46} {url}")
+            hits += 1
+            if hits == 3:
+                break
+        if not hits:
+            print(f"  nothing under {fast} minutes")
+    print("\nimport one with: ./tools/ai_import.py <url> > recipes/dinner/<Name>.cook", file=sys.stderr)
 
 
 def cmd_table(_):

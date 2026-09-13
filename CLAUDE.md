@@ -107,12 +107,14 @@ and per serving. Note `-d data/prices`, not `-d datastore`: prices stay out of t
 datastore. Weights, volumes and things sold each are priced; a tbsp of oil is not, and the report
 lists what it skipped. Products with no shelf unit price fall back to the pack size on the label.
 
-**Ideas from the specials** — `./tools/pns_db.py ideas -n 6` takes this week's specials at the
-default store (cheapest per shelf, a few per aisle, nothing that is already a finished meal), asks
-the free endpoint for fast easy dinners built on them, and checks every ingredient it names against
-what that store actually stocks. Turn one into a recipe with a brief instead of a URL:
-`./tools/ai_import.py "tempeh egg fried rice, 20 minutes, for 2, tempeh egg rice soy sauce" >
-recipes/dinner/Name.cook`, then read it back like any import.
+**Ideas from the specials** — `./tools/pns_db.py ideas -n 5 [-t 30]` takes this week's specials at
+the default store (cheapest per shelf, a few per aisle, one per product family, nothing that is
+already a finished meal), searches BBC Good Food and Marmiton for each, and lists the recipes that
+come in under the time limit. Every hit is a real page, verified by scraping it. Import the ones
+you like with `./tools/ai_import.py <url>`. `./tools/ai_import.py find "<words>"` searches on its
+own. Prefer sourced recipes; `ai_import.py "<brief>"` writes one from a description, but that is a
+fallback for when nothing suitable is online. French sources are fine — imports are written in
+English so the names match `config/aisle.conf` and `config/products.map`.
 
 **Which store** — `./tools/pns_db.py basket <recipe>[:scale] ...` totals a whole list at each
 configured store, cheapest first. An ingredient that isn't stocked at every store is left out of

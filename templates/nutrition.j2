@@ -11,7 +11,17 @@
   {%- else -%}
     {%- set q = i.quantity | default(none) -%}
     {%- set unit = (q.unit | default("")) | lower if q else "" -%}
-    {%- set val = (q.value | default(0)) | float if q else 0 -%}
+    {%- set raw = q.value | string if q else "0" -%}
+    {#- values arrive as text: "200", "1/2", or a range like "1/2-1" that has no single amount -#}
+    {%- if "/" in raw and "-" not in raw and " " not in raw -%}
+      {%- set val = (raw | split("/") | first | float) / (raw | split("/") | last | float) -%}
+    {%- elif raw | replace(".", "") | replace("0", "") | replace("1", "") | replace("2", "")
+             | replace("3", "") | replace("4", "") | replace("5", "") | replace("6", "")
+             | replace("7", "") | replace("8", "") | replace("9", "") == "" -%}
+      {%- set val = raw | float -%}
+    {%- else -%}
+      {%- set val = 0 -%}
+    {%- endif -%}
     {%- if unit == "g" or unit == "ml" -%}
       {%- set f = val / 100 -%}
     {%- elif unit == "kg" or unit == "l" -%}

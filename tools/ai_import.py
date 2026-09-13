@@ -4,6 +4,7 @@
   ./tools/ai_import.py <url> > recipes/dinner/Name.cook
   ./tools/ai_import.py "tempeh egg fried rice, 20 min, tempeh egg rice soy sauce"  # no url: a brief
   ./tools/ai_import.py <url> -m gemini-3.8-pro      # default: gemini-3.8-flash
+  ./tools/ai_import.py find "tofu stir fry"   # real recipe urls to import
   ./tools/ai_import.py selftest
 
 Use when `cook import` has no parser for the site, or the source is a video.
@@ -21,7 +22,7 @@ comma-separated. A random key starts each run and quota/server errors fall
 through to the next one. config/omniroute.key holds the one free-endpoint key,
 or $OMNIROUTE_KEY.
 """
-import json, os, random, re, sys, urllib.error, urllib.request
+import json, os, random, re, sys, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -53,7 +54,11 @@ cookware as #pan{{}} and timers as ~{{10%minutes}}.
 
 Rules:
 - Ingredient names lowercase and singular (@egg, @onion), multi-word ones need the braces: @olive oil{{2%tbsp}}.
-- Metric units (g, ml, tbsp, tsp), servings always a plain number.
+- Metric units (g, ml, tbsp, tsp), servings always a plain number. One amount per ingredient:
+  no ranges and no "1 pinch, 2 tsp" — pick the amount the method actually uses.
+- Drop any metadata line you have nothing to put on it rather than leaving it empty.
+- Write the recipe in English even when the source is not: the aisle file, the pantry and the
+  product map are English. Keep the dish's own name if it has one (bolognaise, tartiflette).
 - Tag every ingredient the first time the method uses it; later mentions are references, @&name{{qty%unit}},
   which add to the first amount. Modifiers @?optional, @-hidden and @@other recipe{{}} are available too.
 - Keep the method wording of the source; do not invent steps or quantities. Guess a quantity only if the source truly omits it.
@@ -92,6 +97,31 @@ def scrape(url):
         return None
 
 
+# plain HTML search pages, both known to recipe-scrapers: (search url, recipe url pattern)
+SITES = [("https://www.bbcgoodfood.com/search?q=%s",
+          r"https://www\.bbcgoodfood\.com/recipes/[a-z0-9-]+"),
+         ("https://www.marmiton.org/recettes/recherche.aspx?aqt=%s",
+          r"https://www\.marmiton\.org/recettes/recette_[a-z0-9_-]+\.aspx")]
+UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/125 Safari/537.36"}
+
+
+def find(query, limit=6):
+    """Real recipe URLs for a search term, a few from each site. Pages that exist, rather than a
+    model's memory of one."""
+    out = []
+    for search, pattern in SITES:
+        req = urllib.request.Request(search % urllib.parse.quote(query), headers=UA)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                html = r.read().decode("utf8", "ignore")
+        except Exception as e:
+            print(f"search for {query!r}: {type(e).__name__}", file=sys.stderr)
+            continue
+        urls = [u for u in dict.fromkeys(re.findall(pattern, html)) if "/category/" not in u]
+        out += urls[:limit]
+    return out
+
+
 def is_url(s):
     return s.startswith(("http://", "https://"))
 
@@ -128,8 +158,9 @@ def omni(text):
         return None
 
 
-def generate(url, data, model):
-    payload = json.dumps(body(url, data)).encode()
+def gemini(payload, model):
+    """POST to Gemini, walking the keys past quota and overload."""
+    payload = json.dumps(payload).encode()
     last = None
     for i, key in enumerate(keys()):
         req = urllib.request.Request(API % model, data=payload,
@@ -143,6 +174,12 @@ def generate(url, data, model):
             last = f"{e.code} on key {i + 1}"
             print(f"key {i + 1}: {e.code}, trying next", file=sys.stderr)
     sys.exit(f"all keys exhausted ({last})")
+
+
+def google(query, model="gemini-3.8-flash"):
+    """Gemini with Search grounding. Use it when you need pages that exist, not remembered ones."""
+    return clean(gemini({"contents": [{"parts": [{"text": query}]}],
+                         "tools": [{"google_search": {}}]}, model))
 
 
 def clean(resp):
@@ -162,7 +199,7 @@ def recipe(url, model):
         return unfence(omni(prompt("kitchen idea", url, "What to cook")) or "") + "\n"
     data = None if re.search(r"(youtube\.com|youtu\.be)/", url) else scrape(url)
     text = omni(prompt(url, data)) if data else None
-    text = text or clean(generate(url, data, model))
+    text = text or clean(gemini(body(url, data), model))
     text = unfence(text)
     if not text:
         sys.exit("empty response from both providers")
@@ -185,6 +222,8 @@ if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if a != "-m"]
     if args[:1] == ["selftest"]:
         selftest()
+    elif args[:1] == ["find"]:
+        print("\n".join(find(" ".join(args[1:]))))
     elif not args:
         sys.exit(__doc__)
     else:
