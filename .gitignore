@@ -3,3 +3,4 @@
 data/
 config/gemini.keys
 .venv/
+__pycache__/
