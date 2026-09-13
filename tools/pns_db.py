@@ -34,9 +34,9 @@ PRICE_DIR = pns.ROOT / "data/prices/ingredients" # today's prices, gitignored, r
 LABEL = "lower(ifnull(p.brand,'') || ' ' || p.name || ' ' || ifnull(p.size,''))"
 CATS = "lower(ifnull(p.category1,'') || ' ' || ifnull(p.category2,''))"
 NON_FOOD = {"household & cleaning", "health & body", "pets", "baby & toddler"}
-# aisles we neither detail nor re-crawl: nothing here goes in a recipe, and the age-restricted
-# ones 404 on the per-product endpoint anyway
-SKIP_AISLES = ("Health & Body", "Household & Cleaning", "Pets", "Beer, Wine & Cider")
+# aisles we neither detail nor re-crawl: nothing here goes in a recipe. Beer, Wine & Cider does —
+# wine goes in the pan, beer goes in the batter — even though most of it 404s when detailed
+SKIP_AISLES = ("Health & Body", "Household & Cleaning", "Pets")
 PRESERVED = {"canned", "tinned", "frozen", "dried", "instant", "pickled"}
 BASES = {"100g": (100, "g"), "1kg": (1000, "g"), "100ml": (100, "ml"), "1l": (1000, "ml"),
          "ea": (1, "each"), "1ea": (1, "each")}
