@@ -12,7 +12,7 @@ config/pantry.conf  what's in the kitchen; shopping-list subtracts it automatica
 datastore/ingredients/<name>.yaml   nutrition per ingredient (see below)
 templates/          Jinja2 report templates for `cook report`
 tools/pns.py        PAK'nSAVE price lookup (guest token, no login)
-config/paknsave.store  store id — PAK'nSAVE Royal Oak, 691 Manukau Road
+config/paknsave.store  store id — PAK'nSAVE Manukau, 6 Cavendish Drive
 plans/              weekly meal plans (YYYY-WW.md)
 ```
 
