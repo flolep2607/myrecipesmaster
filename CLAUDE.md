@@ -9,7 +9,7 @@ skills wrap it. Base path for every `cook` command is this repo root.
 recipes/            .cook files, subfoldered by course (dinner/, baking/, ...)
 config/aisle.conf   shopping-list grouping, ordered like a PAK'nSAVE walk
 config/pantry.conf  what's in the kitchen; shopping-list subtracts it automatically
-datastore/ingredients/<name>.yaml   nutrition per ingredient (see below)
+datastore/<ingredient>/nutrition.yml  nutrition per ingredient (see below)
 templates/          Jinja2 report templates for `cook report`
 tools/pns.py        PAK'nSAVE API client + one-off price lookup (guest token, no login)
 tools/pns_db.py     catalogue + price history in data/paknsave.db (weekly sync)
@@ -49,7 +49,10 @@ Pantry is subtracted by default; `--ignore-pantry` for the full list. Output gro
 `cook pantry recipes` (what can I cook right now). Update it after shopping and after cooking.
 
 **Nutrition** — `cook report -t templates/nutrition.j2 -d datastore <recipe>[:scale]`.
-Each ingredient needs `datastore/ingredients/<snake_case_name>.yaml`:
+The datastore is one folder per ingredient, named the way `underscore(name)` would, with one
+file per topic — the layout https://cooklang.org/guides/reports/ documents, so templates from
+cooklang-reports work against it unchanged. Each ingredient needs
+`datastore/<snake_case_name>/nutrition.yml`:
 ```yaml
 # per 100 g/ml, OR per unit for countable things (one egg, one onion)
 kcal: 364
@@ -84,7 +87,7 @@ Both together, weekly:
 Prices are store-specific and move weekly — read them from the DB, never copy them into
 `datastore/`. Nutrition is the other way round: it is per-product and stable, so the
 `nutrition` table is the place to look up a branded ingredient before hand-writing a
-`datastore/ingredients/*.yaml` entry.
+`datastore/<name>/nutrition.yml` entry.
 
 **Ingredient → product** — `./tools/pns_db.py ingredient "plain flour"` pins the best-matching
 catalogue product to a recipe ingredient name, in `config/products.map` (committed, hand-editable).
@@ -94,9 +97,10 @@ ingredient — `garlic POWDER`, `vegetable OIL` — and prefers fresh produce un
 canned/frozen/dried. Local naming still beats it sometimes: nothing here is called "vegetable oil"
 or "ketchup". `-p N` picks another of the listed matches, `-s "other words"` searches different
 words than the ingredient is called (`ingredient "reduced sugar ketchup" -s "tomato sauce"`). Each pin writes
-`datastore/ingredients/<name>.yaml` (nutrition, only once `enrich` has reached that product) and
-`data/prices/ingredients/<name>.yaml` (today's price, gitignored). After a sync, `./tools/pns_db.py
-prices` rewrites every price file at once.
+`datastore/<name>/nutrition.yml` (only once `enrich` has reached that product) and
+`data/prices/<name>/cost.yml` + `shopping.yml` (today's price and the product it came from,
+gitignored). After a sync, `./tools/pns_db.py prices` rewrites every price and nutrition file at
+once.
 
 **Unit weights** — `config/unit_weights.conf` says what one of a counted ingredient weighs
 (`garlic clove 4`, `onion 180`), so `@onion{1}` prices against a product sold by the kilo. Spoons
@@ -107,6 +111,10 @@ are converted as volume (tsp 5 ml, tbsp 15 ml, cup 250 ml) and a millilitre is p
 and per serving. Note `-d data/prices`, not `-d datastore`: prices stay out of the committed
 datastore. Weights, volumes and things sold each are priced; a tbsp of oil is not, and the report
 lists what it skipped. Products with no shelf unit price fall back to the pack size on the label.
+
+**Basket** — `cook report -t templates/basket.j2 -d data/prices <recipe>[:scale]` lists the
+recipe line by line with the PAK'nSAVE product each price came from, linked, and the pack price.
+That is what `shopping.yml` is for in the reports guide.
 
 **Ideas from the specials** — `./tools/pns_db.py ideas -n 5 [-t 30]` takes this week's specials at
 the default store (cheapest per shelf, a few per aisle, one per product family, nothing that is

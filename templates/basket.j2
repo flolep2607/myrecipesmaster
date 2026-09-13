@@ -1,0 +1,13 @@
+{#- The recipe line by line, each ingredient linked to the product its price came from:
+    data/prices/<name>/shopping.yml, written by ./tools/pns_db.py prices.
+    cook report -t templates/basket.j2 -d data/prices <recipe>[:scale] -#}
+# {{ metadata.title | default("Recipe") }} — basket
+
+| ingredient | amount | product | pack |
+|---|---|---|---|
+{% for i in get_ingredient_list(ingredients) -%}
+{%- set clean = i.name | lower | split("|") | first | trim("?&+-@") -%}
+{%- set nm = underscore(clean | replace("'", "")) -%}
+{%- set url = db(nm ~ ".shopping.url") | default("", true) -%}
+| {{ clean | titleize }} | {{ i.quantities }} | {% if url %}[{{ db(nm ~ ".shopping.name") }}]({{ url }}){% else %}not pinned{% endif %} | {% if url %}{{ db(nm ~ ".shopping.price") | float | number_to_currency }}{% endif %} |
+{% endfor %}

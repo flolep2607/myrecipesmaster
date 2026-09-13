@@ -1,28 +1,19 @@
-{#- Per-recipe nutrition from datastore/ingredients/<name>.yaml
+{#- Per-recipe nutrition from datastore/<name>/nutrition.yml, the layout
+    cooklang.org/guides/reports documents: one folder per ingredient, one file per topic.
     ponytail: grams/ml only (g,kg,ml,l) + per-unit for countable items.
     No density conversion (cups/tbsp -> g). Add g_per_cup per ingredient if you ever need it. -#}
 {%- set ns = namespace(kcal=0, protein=0, carbs=0, fat=0, missing=[]) -%}
 {%- for i in ingredients -%}
-  {%- set nm = i.name | lower | split("|") | first | trim("?&+-@") | replace("'", "")
-                     | replace("-", "_") | replace(" ", "_") -%}
-  {%- set key = "ingredients." ~ nm -%}
+  {%- set key = underscore(i.name | lower | split("|") | first | trim("?&+-@") | replace("'", "")) ~ ".nutrition" -%}
   {%- set kcal = db(key ~ ".kcal") -%}
   {%- if kcal == "" -%}
     {%- set ns.missing = ns.missing + [i.name] -%}
   {%- else -%}
     {%- set q = i.quantity | default(none) -%}
     {%- set unit = (q.unit | default("")) | lower if q else "" -%}
-    {%- set raw = q.value | string if q else "0" -%}
-    {#- values arrive as text: "200", "1/2", or a range like "1/2-1" that has no single amount -#}
-    {%- if "/" in raw and "-" not in raw and " " not in raw -%}
-      {%- set val = (raw | split("/") | first | float) / (raw | split("/") | last | float) -%}
-    {%- elif raw | replace(".", "") | replace("0", "") | replace("1", "") | replace("2", "")
-             | replace("3", "") | replace("4", "") | replace("5", "") | replace("6", "")
-             | replace("7", "") | replace("8", "") | replace("9", "") == "" -%}
-      {%- set val = raw | float -%}
-    {%- else -%}
-      {%- set val = 0 -%}
-    {%- endif -%}
+    {%- set raw = (q.value | string) if q else "0" -%}
+    {#- numeric reads "100", "0.5" and the low end of "1/2-1"; it stops the render on "knob" -#}
+    {%- set val = (raw | numeric) if (raw | first) in "0123456789" else 0 -%}
     {%- if unit == "g" or unit == "ml" -%}
       {%- set f = val / 100 -%}
     {%- elif unit == "kg" or unit == "l" -%}

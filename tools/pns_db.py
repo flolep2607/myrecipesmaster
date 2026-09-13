@@ -28,8 +28,9 @@ PAUSE = 0.12         # be polite
 
 MAP_FILE = pns.ROOT / "config/products.map"      # ingredient -> product_id, hand-editable
 WEIGHTS_FILE = pns.ROOT / "config/unit_weights.conf"   # grams per countable unit, hand-editable
-NUT_DIR = pns.ROOT / "datastore/ingredients"     # nutrition, committed
-PRICE_DIR = pns.ROOT / "data/prices/ingredients" # today's prices, gitignored, regenerated
+# one folder per ingredient, one file per topic, the layout cooklang.org/guides/reports documents
+NUT_DIR = pns.ROOT / "datastore"                 # <name>/nutrition.yml, committed
+PRICE_DIR = pns.ROOT / "data/prices"             # <name>/cost.yml + shopping.yml, gitignored
 # PAK'nSAVE's comparative price, as (amount of base units, base)
 LABEL = "lower(ifnull(p.brand,'') || ' ' || p.name || ' ' || ifnull(p.size,''))"
 CATS = "lower(ifnull(p.category1,'') || ' ' || ifnull(p.category2,''))"
@@ -474,8 +475,14 @@ def candidates(conn, term, store, limit=10):
 
 
 
+def product_url(pid):
+    # ponytail: the shop 403s anything scripted, so this is the shape of its own product links
+    return f"{pns.WEB}/shop/product/{pid.lower().replace('-', '_')}pns"
+
+
 def write_price(conn, name, pid, store, label):
-    """data/prices/ingredients/<name>.yaml — what cost.j2 reads. Never goes in datastore/."""
+    """data/prices/<name>/cost.yml and shopping.yml — what cost.j2 and basket.j2 read.
+    Never goes in datastore/: prices are store-specific and move weekly."""
     row = conn.execute(
         "SELECT cents, unit_cents, unit_measure, promo, day FROM prices "
         "WHERE product_id = ? AND store_id = ? ORDER BY day DESC LIMIT 1", (pid, store)).fetchone()
@@ -486,27 +493,31 @@ def write_price(conn, name, pid, store, label):
     if not per:
         size = conn.execute("SELECT size FROM products WHERE product_id = ?", (pid,)).fetchone()
         per, base = from_size(cents, size[0] if size else None)
-    PRICE_DIR.mkdir(parents=True, exist_ok=True)
+    d = PRICE_DIR / slug(name)
+    d.mkdir(parents=True, exist_ok=True)
     gpu = weights().get(name)
-    (PRICE_DIR / f"{slug(name)}.yaml").write_text(
+    (d / "cost.yml").write_text(
         f"# {label} — regenerate with ./tools/pns_db.py prices\n"
-        f"product_id: {pid}\ncents: {cents}\n"
-        + (f"cents_per_base: {per:.4f}\nbase: {base}\n" if per else "")
+        + (f"per_unit: {per / 100:.6f}   # $ per {base}\nunit: {base}\n" if per else "")
         + (f"grams_per_unit: {gpu:g}\n" if gpu else "")
         + f"promo: {1 if promo else 0}\nday: {day}\n")
+    (d / "shopping.yml").write_text(
+        f"name: {json.dumps(label)}\nurl: {product_url(pid)}\n"
+        f"price: {cents / 100:.2f}\nproduct_id: {pid}\n")
     return per, base
 
 
 def write_nutrition(conn, name, pid, label):
-    """datastore/ingredients/<name>.yaml, straight from the enrich data. None when the
+    """datastore/<name>/nutrition.yml, straight from the enrich data. None when the
     product carries no nutrition — fresh produce mostly, and anything enrich hasn't reached."""
     row = conn.execute("SELECT basis, kcal, protein, carbs, fat FROM nutrition WHERE product_id = ?",
                        (pid,)).fetchone()
     if not row or row[1] is None:
         return None
     basis, kcal, protein, carbs, fat = row
-    NUT_DIR.mkdir(parents=True, exist_ok=True)
-    (NUT_DIR / f"{slug(name)}.yaml").write_text(
+    d = NUT_DIR / slug(name)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "nutrition.yml").write_text(
         f"# per 100 {basis} — {label}\nkcal: {kcal}\nprotein: {protein}\n"
         f"carbs: {carbs}\nfat: {fat}\n")
     return kcal
@@ -736,15 +747,19 @@ def cmd_apply(args):
 
 
 def cmd_prices(_):
-    """Rewrite every pinned price yaml from the newest sync."""
+    """Rewrite every pinned price yaml from the newest sync, and the nutrition enrich has found
+    since the last run — it is per-product and stable, so regenerating it costs nothing."""
     conn, store = db(), pns.my_stores()[0]
-    n = 0
+    n = nut = 0
     for name, pid in pins().items():
         label = conn.execute("SELECT trim(ifnull(brand,'') || ' ' || name) FROM products "
                              "WHERE product_id = ?", (pid,)).fetchone()
-        n += bool(write_price(conn, name, pid, store[0], label[0] if label else pid))
+        label = label[0] if label else pid
+        n += bool(write_price(conn, name, pid, store[0], label))
+        nut += bool(write_nutrition(conn, name, pid, label))
     TABLE.write_text(table())          # the table is derived, so never let it go stale
-    print(f"{n} price files in {PRICE_DIR}, {TABLE.name} rewritten @ {store[1]}")
+    print(f"{n} price files in {PRICE_DIR}, {nut} with nutrition in {NUT_DIR}, "
+          f"{TABLE.name} rewritten @ {store[1]}")
 
 
 def qty_value(v):

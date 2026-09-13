@@ -39,11 +39,11 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | dark soy sauce | Pearl River Bridge Superior Dark Soy Sauce 500ml | $2.00 | $0.40/100ml |  | 120.0 |
 | dashi powder | Shimaya Bonito Flavoured Dashi Seasoning 50g | $4.69 | $9.38/100g |  | 255.7 |
 | dijon mustard | Masterfoods Dijonnaise Mustard 250g | $5.19 | $2.08/100g |  | 233.0 |
-| egg | Woodland Free Range Size 6 Eggs 18pk | $9.99 | $0.56 each | 55 g |  |
+| egg | Woodland Free Range Size 6 Eggs 18pk | $9.99 | $0.56 each | 55 g | 142.4 |
 | egg white | Zeagold Egg White Natural Protein 980ml | $13.49 | $1.38/100ml |  | 47.1 |
 | egg whites | Zeagold Egg White Natural Protein 980ml | $13.49 | $1.38/100ml |  | 47.1 |
 | extra virgin olive oil | Pams Pure Olive Oil 1l | $14.39 | $1.44/100ml |  | 810.2 |
-| firm tofu | All Food Pure Bean Firm Tofu 300g | $1.20 | $0.40/100g |  |  |
+| firm tofu | All Food Pure Bean Firm Tofu 300g | $1.20 | $0.40/100g |  | 88.9 |
 | fish sauce | Poonsin Fish Sauce 205ml | $2.59 | $1.26/100ml |  |  |
 | flaked almond | Pams Sliced Almonds 70g | $2.49 | $3.56/100g |  | 602.3 |
 | flat-leaf parsley | Pams Frilled Parsley ea | $3.99 | $3.99 each | 10 g |  |
@@ -66,7 +66,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | ground coriander | Mrs Rogers Naturals Eco Ground Coriander 30g | $1.99 | $6.63/100g |  |  |
 | ground cumin | Kashish Cumin Seeds 200g | $3.59 | $1.80/100g |  |  |
 | ground turmeric | Masterfoods Ground Turmeric 34g | $2.59 | $7.62/100g |  |  |
-| honey | Pams Value Creamed Clover Blend Honey 1kg | $15.94 | $1.59/100g |  |  |
+| honey | Pams Value Creamed Clover Blend Honey 1kg | $15.94 | $1.59/100g |  | 334.6 |
 | instant ramen | Yum Yum Chicken Instant Noodles 5 x 60g | $2.79 | $0.93/100g | 85 g |  |
 | lemon | Lemons kg | $3.99 | $0.40/100g | 120 g |  |
 | lemon juice | Lemons kg | $3.99 | $0.40/100g |  |  |
@@ -87,14 +87,14 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | olive oil | Pams Pure Olive Oil 1l | $14.39 | $1.44/100ml |  | 810.2 |
 | onion | Brown Onions kg | $2.79 | $0.28/100g | 180 g |  |
 | onion powder | Mrs Rogers Naturals Eco Onion Powder Fine 40g | $1.99 | $4.97/100g |  |  |
-| oyster sauce | Haday Golden Label Oyster Cooking Sauce 530g | $4.89 | $0.92/100g |  |  |
+| oyster sauce | Haday Golden Label Oyster Cooking Sauce 530g | $4.89 | $0.92/100g |  | 111.9 |
 | peanut | Value Pack Roasted Salted Peanuts 400g | $4.29 | $1.07/100g |  | 566.4 |
 | peanut butter | Pams Smooth Peanut Butter 375g | $1.69 | $0.45/100g |  | 645.3 |
 | peanut oil | Pams Peanut Oil 500ml | $5.49 | $1.10/100ml |  | 838.9 |
 | pickled ginger | Healthy n Fresh Sushi Ginger 125g | $2.79 | $2.23/100g |  |  |
 | plain flour | Pams Pure Plain Flour 1.5kg | $2.19 | $0.15/100g |  | 351.3 |
 | plain wholemeal flour | Pams Wholemeal Flour 1.5kg | $2.19 | $0.15/100g |  | 337.0 |
-| raw prawn | Fisherking Raw Stir-Fry Prawns 800g | $13.99 | $1.75/100g |  |  |
+| raw prawn | Fisherking Raw Stir-Fry Prawns 800g | $13.99 | $1.75/100g |  | 63.3 |
 | red bell pepper | Red Capsicum ea | $2.99 | $2.99 each | 180 g |  |
 | red chili | Penta Pickled Red Chilli 454g | $4.89 | $1.08/100g | 12 g |  |
 | red chilli | Check Red Chilli Vegetables 200g | $2.59 | $1.29/100g | 12 g | 30.6 |
@@ -111,15 +111,15 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | shallot | Brown Onions 10kg | $16.99 | $0.17/100g | 30 g |  |
 | smoked paprika | Mrs Rogers Naturals Eco Ground Paprika 40g | $1.99 | $4.97/100g |  |  |
 | soy sauce | Pearl River Bridge Superior Dark Soy Sauce 500ml | $2.00 | $0.40/100ml |  | 120.0 |
-| spaghetti | Pasta Maria Spaghetti 400g | $1.29 | $0.32/100g |  |  |
-| spring onion | Mama San Chopped Spring Onion 454g | $4.99 | $1.10/100g | 15 g |  |
-| sriracha sauce | Eaglobe Hot Chilli Sriracha Sauce 500ml | $5.99 | $1.20/100ml |  |  |
+| spaghetti | Pasta Maria Spaghetti 400g | $1.29 | $0.32/100g |  | 365.7 |
+| spring onion | Mama San Chopped Spring Onion 454g | $4.99 | $1.10/100g | 15 g | 31.1 |
+| sriracha sauce | Eaglobe Hot Chilli Sriracha Sauce 500ml | $5.99 | $1.20/100ml |  | 84.8 |
 | star anise | Mrs Rogers Premium Eco Star Anise 11g | $3.02 | $27.45/100g |  |  |
 | sugar | Chelsea White Sugar 1.5kg | $3.00 | $0.20/100g |  | 406.3 |
 | sunflower oil | Pams Sunflower Oil 2l | $10.19 | $0.51/100ml |  | 805.4 |
 | sunflower or vegetable oil | Pams Canola Oil 500ml | $1.79 | $0.36/100ml |  | 805.4 |
 | tempeh | Tonzu Organic Tempeh 250g | $6.19 | $2.48/100g |  | 175.2 |
-| tofu | All Food Pure Bean Firm Tofu 300g | $1.20 | $0.40/100g | 300 g |  |
+| tofu | All Food Pure Bean Firm Tofu 300g | $1.20 | $0.40/100g | 300 g | 88.9 |
 | tomato | Loose Red Tomatoes kg | $7.99 | $0.80/100g | 120 g |  |
 | udon noodle | Chef's World Noodles Udon 200g | $1.29 | $0.65/100g |  | 139.8 |
 | vegetable oil | Pams Canola Oil 500ml | $1.79 | $0.36/100ml |  | 805.4 |

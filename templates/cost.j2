@@ -1,45 +1,36 @@
-{#- Per-recipe cost from data/prices/ingredients/<name>.yaml, which ./tools/pns_db.py prices
-    regenerates from the newest sync. Run it with -d data/prices, not -d datastore: prices are
-    store-specific and move weekly, so they never live in the committed datastore.
+{#- Per-recipe cost from data/prices/<name>/cost.yml, which ./tools/pns_db.py prices regenerates
+    from the newest sync — the datastore layout cooklang.org/guides/reports documents, one folder
+    per ingredient. Run it with -d data/prices, not -d datastore: prices are store-specific and
+    move weekly, so they never live in the committed datastore.
     ponytail: weights and volumes only, plus countable items when the shelf sells them each.
     A tbsp of oil can't be priced without a density, and isn't worth one. -#}
-{%- set ns = namespace(cents=0, missing=[], day="") -%}
+{%- set ns = namespace(total=0, missing=[], day="") -%}
 {%- for i in ingredients -%}
   {#- modifiers and aliases ride along in the name: @?lemon wedge|lemon wedges -#}
-  {%- set nm = i.name | lower | split("|") | first | trim("?&+-@") | replace("'", "")
-                       | replace("-", "_") | replace(" ", "_") -%}
-  {%- set key = "ingredients." ~ nm -%}
-  {%- set cpb = db(key ~ ".cents_per_base") -%}
-  {%- set base = db(key ~ ".base") -%}
+  {%- set nm = underscore(i.name | lower | split("|") | first | trim("?&+-@") | replace("'", "")) -%}
+  {%- set per = db(nm ~ ".cost.per_unit") | default("", true) -%}
+  {%- set base = db(nm ~ ".cost.unit") | default("", true) -%}
   {%- set q = i.quantity | default(none) -%}
   {%- set unit = (q.unit | default("")) | lower if q else "" -%}
-  {%- set raw = q.value | string if q else "0" -%}
-  {#- values arrive as text: "200", "1/2", or a range like "1/2-1" that has no single amount -#}
-  {%- if "/" in raw and "-" not in raw and " " not in raw -%}
-    {%- set val = (raw | split("/") | first | float) / (raw | split("/") | last | float) -%}
-  {%- elif raw | replace(".", "") | replace("0", "") | replace("1", "") | replace("2", "")
-           | replace("3", "") | replace("4", "") | replace("5", "") | replace("6", "")
-           | replace("7", "") | replace("8", "") | replace("9", "") == "" -%}
-    {%- set val = raw | float -%}
-  {%- else -%}
-    {%- set val = 0 -%}
-  {%- endif -%}
-  {%- if cpb == "" -%}
+  {%- set raw = (q.value | string) if q else "0" -%}
+  {#- numeric reads "100", "0.5" and the low end of "1/2-1"; it stops the render on "knob" -#}
+  {%- set val = (raw | numeric) if (raw | first) in "0123456789" else 0 -%}
+  {%- if not per -%}
     {%- set ns.missing = ns.missing + [i.name | lower | split("|") | first | trim("?&+-@")] -%}
   {%- elif not q or val == 0 -%}
     {#- a reference back to an earlier mention, or an unmeasured pinch: the amount is already
         counted, or there is no amount to count -#}
   {%- else -%}
-    {%- set ns.day = db(key ~ ".day") -%}
+    {%- set ns.day = db(nm ~ ".cost.day") -%}
     {%- set spoons = {"tsp": 5, "tbsp": 15, "cup": 250, "pinch": 0.3} -%}
-    {%- set gpu = db(key ~ ".grams_per_unit") -%}
+    {%- set gpu = db(nm ~ ".cost.grams_per_unit") | default("", true) -%}
     {%- set counted = unit not in ["g", "ml", "kg", "l"] and unit not in spoons -%}
     {%- if not counted and base != "each" -%}
       {#- spoons are volume, and a millilitre costs what a gram costs -#}
       {%- set amount = val * (1000 if unit in ["kg", "l"] else spoons[unit] if unit in spoons else 1) -%}
     {%- elif counted and base == "each" -%}
       {%- set amount = val -%}
-    {%- elif counted and gpu != "" -%}
+    {%- elif counted and gpu -%}
       {#- one clove, one onion: config/unit_weights.conf says what it weighs -#}
       {%- set amount = val * (gpu | float) -%}
     {%- else -%}
@@ -47,7 +38,7 @@
       {%- set amount = 0 -%}
       {%- set ns.missing = ns.missing + [i.name ~ " (" ~ unit ~ ")"] -%}
     {%- endif -%}
-    {%- set ns.cents = ns.cents + (cpb | float) * amount -%}
+    {%- set ns.total = ns.total + (per | float) * amount -%}
   {%- endif -%}
 {%- endfor -%}
 {%- set srv = (metadata.servings | default(1)) | float -%}
@@ -55,8 +46,8 @@
 
 | per | cost |
 |---|---|
-| total | ${{ (ns.cents / 100) | round(2) }} |
-| serving (x{{ srv | round }}) | ${{ (ns.cents / 100 / srv) | round(2) }} |
+| total | {{ ns.total | round(2) | number_to_currency }} |
+| serving (x{{ srv | round }}) | {{ (ns.total / srv) | round(2) | number_to_currency }} |
 
 prices from PAK'nSAVE {{ ns.day }}
 {%- if ns.missing %}
