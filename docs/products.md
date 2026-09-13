@@ -41,7 +41,6 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | dijon mustard | Masterfoods Dijonnaise Mustard 250g | $5.19 | $2.08/100g |  | 233.0 |
 | egg | Woodland Free Range Size 6 Eggs 18pk | $9.99 | $0.56 each | 55 g | 142.4 |
 | egg white | Zeagold Egg White Natural Protein 980ml | $13.49 | $1.38/100ml |  | 47.1 |
-| egg whites | Zeagold Egg White Natural Protein 980ml | $13.49 | $1.38/100ml |  | 47.1 |
 | extra virgin olive oil | Pams Pure Olive Oil 1l | $14.39 | $1.44/100ml |  | 810.2 |
 | firm tofu | All Food Pure Bean Firm Tofu 300g | $1.20 | $0.40/100g |  | 88.9 |
 | fish sauce | Poonsin Fish Sauce 205ml | $2.59 | $1.26/100ml |  |  |
