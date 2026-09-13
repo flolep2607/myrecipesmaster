@@ -7,6 +7,7 @@
   ./tools/pns_db.py ingredient flour     # pin a product to an ingredient, write its yaml
   ./tools/pns_db.py prices               # refresh every pinned price after a sync
   ./tools/pns_db.py basket Pancakes.cook:2 ...   # what the list costs at each store
+  ./tools/pns_db.py table                # the whole mapping as markdown
   ./tools/pns_db.py stats
 
 Weekly:  0 7 * * 1  cd ~/recipes && ./tools/pns_db.py sync >> data/sync.log 2>&1
@@ -24,6 +25,7 @@ MAX_PAGES = 20       # Algolia caps any one query at 1000 hits
 PAUSE = 0.12         # be polite
 
 MAP_FILE = pns.ROOT / "config/products.map"      # ingredient -> product_id, hand-editable
+WEIGHTS_FILE = pns.ROOT / "config/unit_weights.conf"   # grams per countable unit, hand-editable
 NUT_DIR = pns.ROOT / "datastore/ingredients"     # nutrition, committed
 PRICE_DIR = pns.ROOT / "data/prices/ingredients" # today's prices, gitignored, regenerated
 # PAK'nSAVE's comparative price, as (amount of base units, base)
@@ -33,8 +35,8 @@ NON_FOOD = {"household & cleaning", "health & body", "pets", "baby & toddler"}
 PRESERVED = {"canned", "tinned", "frozen", "dried", "instant", "pickled"}
 BASES = {"100g": (100, "g"), "1kg": (1000, "g"), "100ml": (100, "ml"), "1l": (1000, "ml"),
          "ea": (1, "each"), "1ea": (1, "each")}
-# recipe units we can turn into those bases; anything else (tbsp, pinch, clove) can't be priced
-UNITS = {"g": (1, "g"), "kg": (1000, "g"), "ml": (1, "ml"), "l": (1000, "ml"), "": (1, "each")}
+# recipe units we can turn into those bases; anything else (tbsp, pinch, large) is countable
+UNITS = {"g": (1, "g"), "kg": (1000, "g"), "ml": (1, "ml"), "l": (1000, "ml")}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS stores(id TEXT PRIMARY KEY, label TEXT);
@@ -304,12 +306,25 @@ def per_base(unit_cents, measure):
     return (unit_cents / m[0], m[1]) if m and unit_cents else (None, None)
 
 
-def to_base(value, unit):
-    """A recipe quantity as (amount, base). Countable things have no unit, or one we can't
-    weigh (large, clove); they only price out if the product is sold each."""
-    u = (unit or "").lower()
-    mult, base = UNITS.get(u, (1, "each"))
-    return value * mult, base
+def to_base(value, unit, grams=None):
+    """A recipe quantity as (amount, base). Countable things have no unit, or one we can't weigh
+    (large, clove): they price per item, or by weight when config/unit_weights.conf knows what
+    one of them weighs."""
+    mult, base = UNITS.get((unit or "").lower(), (None, None))
+    if base:
+        return value * mult, base
+    return (value * grams, "g") if grams else (value, "each")
+
+
+def weights():
+    """{ingredient: grams for one of them} — one clove, one onion, one chicken breast."""
+    out = {}
+    for ln in (WEIGHTS_FILE.read_text().splitlines() if WEIGHTS_FILE.exists() else []):
+        ln = ln.split("#")[0].strip()
+        if ln:
+            name, _, g = ln.rpartition(" ")
+            out[name.strip()] = float(g)
+    return out
 
 
 def map_key(line):
@@ -425,10 +440,12 @@ def write_price(conn, name, pid, store, label):
         size = conn.execute("SELECT size FROM products WHERE product_id = ?", (pid,)).fetchone()
         per, base = from_size(cents, size[0] if size else None)
     PRICE_DIR.mkdir(parents=True, exist_ok=True)
+    gpu = weights().get(name)
     (PRICE_DIR / f"{slug(name)}.yaml").write_text(
         f"# {label} — regenerate with ./tools/pns_db.py prices\n"
         f"product_id: {pid}\ncents: {cents}\n"
         + (f"cents_per_base: {per:.4f}\nbase: {base}\n" if per else "")
+        + (f"grams_per_unit: {gpu:g}\n" if gpu else "")
         + f"promo: {1 if promo else 0}\nday: {day}\n")
     return per, base
 
@@ -479,6 +496,76 @@ def cmd_ingredient(args):
             print(f"  -p {n}  {lab}  ${c / 100:.2f}" + (f"  ${uc / 100:.2f}/{m}" if uc else ""))
 
 
+def cmd_table(_):
+    """The mapping as markdown: what each ingredient buys, what it costs, what it's made of."""
+    conn, grams = db(), weights()
+    store = pns.my_stores()[0]
+    print(f"| ingredient | product | price | per | one is | kcal/100 |\n|---|---|---|---|---|---|")
+    for name, pid in sorted(pins().items()):
+        row = conn.execute(
+            "SELECT trim(ifnull(p.brand,'') || ' ' || p.name || ' ' || ifnull(p.size,'')), "
+            "       pr.cents, pr.unit_cents, pr.unit_measure, p.size, n.kcal "
+            "FROM products p LEFT JOIN prices pr ON pr.product_id = p.product_id "
+            "  AND pr.store_id = ? AND pr.day = (SELECT max(day) FROM prices) "
+            "LEFT JOIN nutrition n ON n.product_id = p.product_id WHERE p.product_id = ?",
+            (store[0], pid)).fetchone()
+        if not row:
+            continue
+        label, cents, unit_cents, measure, size, kcal = row
+        per, base = per_base(unit_cents, measure)
+        if not per:
+            per, base = from_size(cents, size)
+        unit = (f"${per / 100:.2f} each" if base == "each" else f"${per:.2f}/100{base}") if per else ""
+        g = f"{grams[name]:g} g" if name in grams else ""
+        print(f"| {name} | {label} | ${cents / 100:.2f} | {unit} | {g} | {kcal or ''} |")
+
+
+def cmd_suggest(args):
+    """Print the candidate products for a name without pinning anything."""
+    conn, store = db(), pns.my_stores()[0]
+    term = " ".join(a for a in args if a != "-s").lower()
+    for n, (pid, label, cents, unit_cents, measure) in enumerate(candidates(conn, term, store[0]), 1):
+        per, base = per_base(unit_cents, measure)
+        if not per:
+            per, base = from_size(cents, conn.execute(
+                "SELECT size FROM products WHERE product_id = ?", (pid,)).fetchone()[0])
+        unit = (f"${per / 100:.2f} each" if base == "each" else f"${per:.2f}/100{base}") if per else "?"
+        cat = conn.execute("SELECT category0 || ' > ' || ifnull(category1,'') || ' > ' || "
+                           "ifnull(category2,'') FROM products WHERE product_id = ?", (pid,)).fetchone()[0]
+        print(f"{n}. {label}  ${cents / 100:.2f}  {unit}  [{cat}]")
+
+
+def cmd_apply(args):
+    """Read decisions on stdin and pin them all: `<ingredient> | <search or -> | <n> | <grams or ->`,
+    the format the ingredient-picking agents report in."""
+    conn, store = db(), pns.my_stores()[0]
+    lines = sys.stdin if args == ["-"] else Path(args[0]).read_text().splitlines()
+    gram_lines, done = [], 0
+    for ln in lines:
+        parts = [f.strip() for f in ln.split("|")]
+        if len(parts) != 4 or not parts[0] or parts[0].startswith("#"):
+            continue
+        name, search, pick, grams = parts
+        hits = candidates(conn, (search if search != "-" else name).lower(), store[0])
+        n = int(pick) - 1 if pick.isdigit() else 0
+        if not hits or n >= len(hits):
+            print(f"  no match for {name} ({search})", file=sys.stderr)
+            continue
+        pid, label = hits[n][0], hits[n][1]
+        pin(name.lower(), pid, label)
+        if grams not in ("-", ""):
+            gram_lines.append(f"{name.lower()} {grams}")
+        done += 1
+        print(f"{name} -> {label}")
+    if gram_lines:
+        keep = [ln for ln in (WEIGHTS_FILE.read_text().splitlines() if WEIGHTS_FILE.exists() else [])
+                if ln.split("#")[0].strip().rpartition(" ")[0] not in
+                {g.rpartition(" ")[0] for g in gram_lines}]
+        WEIGHTS_FILE.write_text("\n".join(sorted(x for x in keep + gram_lines if x.strip())) + "\n")
+    print(f"{done} pinned, {len(gram_lines)} unit weights", file=sys.stderr)
+    cmd_prices([])
+
+
 def cmd_prices(_):
     """Rewrite every pinned price yaml from the newest sync."""
     conn, store = db(), pns.my_stores()[0]
@@ -521,7 +608,7 @@ def cmd_basket(args):
     """What one shopping list costs at each store, valued at today's unit prices."""
     if not args:
         sys.exit("usage: pns_db.py basket <recipe>[:scale] ...")
-    conn, mapped = db(), pins()
+    conn, mapped, grams = db(), pins(), weights()
     stores = list(conn.execute("SELECT id, label FROM stores"))
     day = conn.execute("SELECT max(day) FROM prices").fetchone()[0]
     totals = {label: 0.0 for _, label in stores}
@@ -531,7 +618,7 @@ def cmd_basket(args):
         if not pid or value is None:
             skipped.append(name if pid else f"{name} (not pinned)")
             continue
-        amount, base = to_base(float(value), unit)
+        amount, base = to_base(float(value), unit, grams.get(name.lower()))
         size = conn.execute("SELECT size FROM products WHERE product_id = ?", (pid,)).fetchone()
         costs = {}
         for sid, label in stores:
@@ -599,6 +686,8 @@ def demo():
     assert per_base(None, "100g") == (None, None) and per_base(100, "each") == (None, None)
     assert to_base(1.5, "kg") == (1500, "g") and to_base(2, None) == (2, "each")
     assert to_base(3, "large") == (3, "each"), "countable units fall back to each"
+    assert to_base(8, None, 5) == (40, "g"), "a known unit weight prices countable things"
+    assert to_base(200, "g", 5) == (200, "g"), "a real unit still wins over the weight table"
     assert from_size(149, "1kg") == (0.149, "g") and from_size(259, "44g")[1] == "g"
     assert from_size(699, "12pk") == (699 / 12, "each") and from_size(100, None) == (None, None)
     assert qty_value({"value": {"value": 600.0}}) == 600.0
@@ -624,5 +713,5 @@ def demo():
 if __name__ == "__main__":
     cmd, args = (sys.argv[1] if len(sys.argv) > 1 else ""), sys.argv[2:]
     {"sync": cmd_sync, "enrich": cmd_enrich, "compare": cmd_compare, "history": cmd_history,
-     "ingredient": cmd_ingredient, "prices": cmd_prices, "basket": cmd_basket,
+     "ingredient": cmd_ingredient, "prices": cmd_prices, "basket": cmd_basket, "table": cmd_table, "suggest": cmd_suggest, "apply": cmd_apply,
      "stats": cmd_stats, "selftest": lambda _: demo()}.get(cmd, lambda _: sys.exit(__doc__))(args)

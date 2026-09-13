@@ -23,6 +23,9 @@
       {%- set amount = val * 1000 -%}
     {%- elif base == "each" -%}
       {%- set amount = val -%}
+    {%- elif db(key ~ ".grams_per_unit") != "" -%}
+      {#- one clove, one onion: config/unit_weights.conf says what it weighs -#}
+      {%- set amount = val * (db(key ~ ".grams_per_unit") | float) -%}
     {%- else -%}
       {%- set amount = 0 -%}
       {%- set ns.missing = ns.missing + [i.name ~ " (" ~ unit ~ ")"] -%}
