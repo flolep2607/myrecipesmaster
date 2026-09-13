@@ -1,0 +1,46 @@
+{#- Per-recipe cost from data/prices/ingredients/<name>.yaml, which ./tools/pns_db.py prices
+    regenerates from the newest sync. Run it with -d data/prices, not -d datastore: prices are
+    store-specific and move weekly, so they never live in the committed datastore.
+    ponytail: weights and volumes only, plus countable items when the shelf sells them each.
+    A tbsp of oil can't be priced without a density, and isn't worth one. -#}
+{%- set ns = namespace(cents=0, missing=[], day="") -%}
+{%- for i in ingredients -%}
+  {#- modifiers and aliases ride along in the name: @?lemon wedge|lemon wedges -#}
+  {%- set nm = i.name | lower | split("|") | first | trim("?&+-@") | replace("-", "_") | replace(" ", "_") -%}
+  {%- set key = "ingredients." ~ nm -%}
+  {%- set cpb = db(key ~ ".cents_per_base") -%}
+  {%- set base = db(key ~ ".base") -%}
+  {%- set q = i.quantity | default(none) -%}
+  {%- set unit = (q.unit | default("")) | lower if q else "" -%}
+  {%- set val = (q.value | default(0)) | float if q else 0 -%}
+  {%- if cpb == "" or not q -%}
+    {%- set ns.missing = ns.missing + [i.name | lower | split("|") | first | trim("?&+-@")] -%}
+  {%- else -%}
+    {%- set ns.day = db(key ~ ".day") -%}
+    {%- if unit in ["g", "ml"] and base != "each" -%}
+      {%- set amount = val -%}
+    {%- elif unit in ["kg", "l"] and base != "each" -%}
+      {%- set amount = val * 1000 -%}
+    {%- elif base == "each" -%}
+      {%- set amount = val -%}
+    {%- else -%}
+      {%- set amount = 0 -%}
+      {%- set ns.missing = ns.missing + [i.name ~ " (" ~ unit ~ ")"] -%}
+    {%- endif -%}
+    {%- set ns.cents = ns.cents + (cpb | float) * amount -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- set srv = (metadata.servings | default(1)) | float -%}
+# {{ metadata.title | default("Recipe") }} — cost
+
+| per | cost |
+|---|---|
+| total | ${{ (ns.cents / 100) | round(2) }} |
+| serving (x{{ srv | round }}) | ${{ (ns.cents / 100 / srv) | round(2) }} |
+
+prices from PAK'nSAVE {{ ns.day }}
+{%- if ns.missing %}
+
+not priced: {{ ns.missing | join(", ") }}
+  pin them with ./tools/pns_db.py ingredient <name>
+{%- endif %}

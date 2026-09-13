@@ -3,13 +3,15 @@
     No density conversion (cups/tbsp -> g). Add g_per_cup per ingredient if you ever need it. -#}
 {%- set ns = namespace(kcal=0, protein=0, carbs=0, fat=0, missing=[]) -%}
 {%- for i in ingredients -%}
-  {%- set key = "ingredients." ~ (i.name | lower | replace(" ", "_")) -%}
+  {%- set nm = i.name | lower | split("|") | first | trim("?&+-@") | replace("-", "_") | replace(" ", "_") -%}
+  {%- set key = "ingredients." ~ nm -%}
   {%- set kcal = db(key ~ ".kcal") -%}
   {%- if kcal == "" -%}
     {%- set ns.missing = ns.missing + [i.name] -%}
   {%- else -%}
-    {%- set unit = (i.quantity.unit | default("")) | lower -%}
-    {%- set val = (i.quantity.value | default("0")) | float -%}
+    {%- set q = i.quantity | default(none) -%}
+    {%- set unit = (q.unit | default("")) | lower if q else "" -%}
+    {%- set val = (q.value | default(0)) | float if q else 0 -%}
     {%- if unit == "g" or unit == "ml" -%}
       {%- set f = val / 100 -%}
     {%- elif unit == "kg" or unit == "l" -%}

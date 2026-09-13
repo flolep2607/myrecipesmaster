@@ -85,6 +85,23 @@ Prices are store-specific and move weekly — read them from the DB, never copy 
 `nutrition` table is the place to look up a branded ingredient before hand-writing a
 `datastore/ingredients/*.yaml` entry.
 
+**Ingredient → product** — `./tools/pns_db.py ingredient "plain flour"` pins the best-matching
+catalogue product to a recipe ingredient name, in `config/products.map` (committed, hand-editable).
+`-p N` picks another of the listed matches, `-s "other words"` searches different words than the
+ingredient is called (`ingredient "cooked white rice" -s "long grain rice"`). Each pin writes
+`datastore/ingredients/<name>.yaml` (nutrition, only once `enrich` has reached that product) and
+`data/prices/ingredients/<name>.yaml` (today's price, gitignored). After a sync, `./tools/pns_db.py
+prices` rewrites every price file at once.
+
+**Cost** — `cook report -t templates/cost.j2 -d data/prices <recipe>[:scale]` gives cost per recipe
+and per serving. Note `-d data/prices`, not `-d datastore`: prices stay out of the committed
+datastore. Weights, volumes and things sold each are priced; a tbsp of oil is not, and the report
+lists what it skipped. Products with no shelf unit price fall back to the pack size on the label.
+
+**Which store** — `./tools/pns_db.py basket <recipe>[:scale] ...` totals a whole list at each
+configured store, cheapest first. An ingredient that isn't stocked at every store is left out of
+every total rather than making one store look cheap.
+
 **Health** — `cook doctor` before committing. `cook server` for a local browsable cookbook.
 
 **Patched CookCLI** — stock cookcli builds its parser with `Extensions::empty()`, so `@&reference`,
