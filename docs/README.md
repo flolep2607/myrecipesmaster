@@ -8,8 +8,12 @@ can paste `extensions.md` into its prompt. `./docs/refresh.py` re-downloads them
 | `spec.md` | cooklang/spec `README.md` | the language itself: ingredients, cookware, timers, metadata |
 | `spec-ebnf.md` | cooklang/spec `EBNF.md` | the grammar, for when a parse surprises you |
 | `conventions.md` | cooklang/spec `conventions.md` | canonical metadata keys, `.menu` plans, `.shopping-list` format, recipe scaling |
-| `extensions.md` | cooklang/cooklang-rs `extensions.md` | modifiers `@&` `@?` `@-` `@@`, intermediate preparations, ranges, sections — only work on our patched CookCLI |
+| `extensions.md` | cooklang/cooklang-rs `extensions.md` | modifiers `@&` `@?` `@-`, intermediate preparations, ranges, sections — only work on our patched CookCLI |
 | `best-practices.md` | cooklang.org `content/docs/best-practices.md` | writing habits that keep a collection tidy |
 | `cli-commands.md` | cooklang.org `content/docs/getting-started-commands.md` | every `cook` subcommand with examples |
 | `for-developers.md` | cooklang.org `content/docs/for-developers.md` | the parser libraries and bindings |
 | `examples.md` | cooklang.org `content/docs/examples.md` | worked recipe examples |
+| `proposal-0008-mise-en-place.md` | cooklang/spec `proposals/0008-mise-en-place.md` | preparation as a note: `@onion{1}(finely chopped)` |
+| `proposal-0010-servings.md` | cooklang/spec `proposals/0010-servings.md` | scaling, and `=` for a quantity that must not scale |
+| `proposal-0015-other-recipes.md` | cooklang/spec `proposals/0015-other-recipes.md` | `@./Component{2%servings}`, how a recipe references another |
+| `proposal-0016-shopping-list-format.md` | cooklang/spec `proposals/0016-shopping-list-format.md` | `.shopping-list` / `.shopping-checked`, not in CookCLI 0.35 yet |

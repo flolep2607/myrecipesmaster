@@ -13,6 +13,10 @@ SOURCES = {
     "cli-commands.md": ("cooklang/cooklang.org", "content/docs/getting-started-commands.md"),
     "for-developers.md": ("cooklang/cooklang.org", "content/docs/for-developers.md"),
     "examples.md": ("cooklang/cooklang.org", "content/docs/examples.md"),
+    "proposal-0008-mise-en-place.md": ("cooklang/spec", "proposals/0008-mise-en-place.md"),
+    "proposal-0010-servings.md": ("cooklang/spec", "proposals/0010-servings.md"),
+    "proposal-0015-other-recipes.md": ("cooklang/spec", "proposals/0015-other-recipes.md"),
+    "proposal-0016-shopping-list-format.md": ("cooklang/spec", "proposals/0016-shopping-list-format.md"),
 }
 
 for name, (repo, path) in SOURCES.items():

@@ -70,7 +70,8 @@ Rules:
 - Write the recipe in English even when the source is not: the aisle file, the pantry and the
   product map are English. Keep the dish's own name if it has one (bolognaise, tartiflette).
 - Tag every ingredient the first time the method uses it; later mentions are references, @&name{{qty%unit}},
-  which add to the first amount. Modifiers @?optional, @-hidden and @@other recipe{{}} are available too.
+  which add to the first amount. Modifiers @?optional and @-hidden are available too, and
+  @./Other Recipe{{2%servings}} references another .cook file in the same folder — never @@name.
 - Keep the method wording of the source; do not invent steps or quantities. Guess a quantity only if the source truly omits it.
 - If extracted fields are given below, they are authoritative: use those ingredients, amounts and steps, and do not add any.
 

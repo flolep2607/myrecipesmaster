@@ -15,7 +15,7 @@ tools/pns.py        PAK'nSAVE API client + one-off price lookup (guest token, no
 tools/pns_db.py     catalogue + price history in data/paknsave.db (weekly sync)
 config/paknsave.stores  store ids, first is the default: Manukau, Royal Oak, Sylvia Park
 data/               SQLite DB and sync logs — gitignored, this is the price history, back it up
-plans/              weekly meal plans (YYYY-WW.md)
+plans/              weekly meal plans (YYYY-WW.menu, recipe references per day)
 docs/               vendored cooklang spec/conventions/extensions, `./docs/refresh.py` updates them
 ```
 
@@ -37,9 +37,24 @@ recipe-scrapers has no parser for — the page text is fetched and stripped loca
 for the one thing only it can do, watching a video, and as the fallback when the free endpoint
 drops a request. Read the output back and check the parse either way.
 
-**Weekly plan** — write `plans/YYYY-WW.md` listing one recipe per day with its scale
-(`Name.cook:2`). Then one shopping list for the whole week:
-`cook shopping-list recipes/**/*.cook` with the chosen scales.
+**Weekly plan** — write `plans/YYYY-WW.menu`, the standard menu format: a section per day and
+one recipe reference per meal, scaled in braces. Paths are relative to this repo root, so run
+`cook` from here.
+
+```cooklang
+= Monday
+
+@./recipes/dinner/Patty Melt{2}
+@./recipes/breakfast/Easy Pancakes{}
+
+= Tuesday
+
+@./recipes/dinner/Gyudon{2}
+```
+
+`{2}` doubles the recipe, `{}` leaves it as written, and a section name may be a `YYYY-MM-DD`
+date if you want apps to find today. Then one shopping list for the whole week, aisle-grouped
+and pantry-subtracted like any other: `cook shopping-list plans/2026-38.menu`.
 
 **Shopping list** — `cook shopping-list <recipe>:<scale> ... --extra "paper towels"`.
 Pantry is subtracted by default; `--ignore-pantry` for the full list. Output grouped by
@@ -162,13 +177,33 @@ every total rather than making one store look cheap.
 **Health** — `cook doctor` before committing. `cook server` for a local browsable cookbook.
 
 **Patched CookCLI** — stock cookcli builds its parser with `Extensions::empty()`, so `@&reference`,
-`@?optional`, `@-hidden`, `@@other recipe{}` and intermediate preparations all parse as literal names.
+`@?optional`, `@-hidden`, `@./other recipe{}` and intermediate preparations all parse as literal names.
 `~/src/cookcli-patched/` is 0.35.0 with `cookcli-core/src/parser.rs` flipped to `Extensions::all()`
 and cooklang's `bundled_units` feature added to `cookcli-core/Cargo.toml` — without it the converter
 knows no units, every timer unit is an error and `500 g` never merges with `0.5 kg` in a shopping
 list. `cook update` or a `cargo install cookcli` overwrites it —
 re-apply with `cargo install --path ~/src/cookcli-patched/cookcli --locked`, and re-patch the sources
 if the version moved.
+
+## Syntax worth knowing
+
+The proposals behind these are in `docs/`, and all of them work in the patched build:
+
+- **Preparation goes in a note**, not in a repeated sentence: `@onion{1}(peeled and finely
+  chopped)`. No space before the bracket or it is read as prose. This is mise en place (0008),
+  released, and the reason the importer never writes `@rice{400%g%washed}`.
+- **A component recipe is referenced by path**: `@./Pesto{2%servings}` pulls in `Pesto.cook`
+  from the same folder, and `cook shopping-list` expands it into its own ingredients, scaled.
+  `{2%servings}` reads the component's `servings:`; a plain `{2}` doubles it; `{100%g}` needs
+  `yield: 200%g` in the component, which scales correctly but warns on every run. Use servings.
+  `@@name{}` is the older syntax and is NOT what this parser reads — it silently becomes a plain
+  ingredient called "name", which is how a recipe ends up shopping for "Pesto" by the gram.
+- **A quantity that must not scale** is locked with `=`: `@oil{=2%tbsp}` for the film of oil in
+  the pan stays 2 tbsp at `:4`. cooklang 0.18.7 warns "Unnecessary scaling lock modifier" every
+  time it sees one, even where it works, so nothing in this vault uses it yet.
+- **The shopping-list file format** (0016, `.shopping-list` + `.shopping-checked`) is not
+  implemented in CookCLI 0.35 — `plans/YYYY-WW.md` plus `cook shopping-list <recipe>:<scale>`
+  stays the way to do this here.
 
 ## Conventions
 
