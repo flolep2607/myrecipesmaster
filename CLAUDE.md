@@ -79,6 +79,14 @@ Prices are store-specific and move weekly — read them from the DB, never copy 
 
 **Health** — `cook doctor` before committing. `cook server` for a local browsable cookbook.
 
+**Patched CookCLI** — stock cookcli builds its parser with `Extensions::empty()`, so `@&reference`,
+`@?optional`, `@-hidden`, `@@other recipe{}` and intermediate preparations all parse as literal names.
+`~/src/cookcli-patched/` is 0.35.0 with `cookcli-core/src/parser.rs` flipped to `Extensions::all()`
+minus `ADVANCED_UNITS` and `TIMER_REQUIRES_TIME` (both need the unit database cookcli does not build,
+without it every timer unit is an error). `cook update` or a `cargo install cookcli` overwrites it —
+re-apply with `cargo install --path ~/src/cookcli-patched/cookcli --locked`, and re-patch the sources
+if the version moved.
+
 ## Conventions
 
 - Ingredient names: lowercase singular (`egg`, not `Eggs`) so aisle/pantry/datastore all match.

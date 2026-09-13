@@ -37,8 +37,8 @@ cookware as #pan{{}} and timers as ~{{10%minutes}}.
 Rules:
 - Ingredient names lowercase and singular (@egg, @onion), multi-word ones need the braces: @olive oil{{2%tbsp}}.
 - Metric units (g, ml, tbsp, tsp), servings always a plain number.
-- Tag every mention of an ingredient with the quantity used at that point; repeats of the same name
-  are summed automatically. Never use the reference modifier @& — this CookCLI build does not support it.
+- Tag every ingredient the first time the method uses it; later mentions are references, @&name{{qty%unit}},
+  which add to the first amount. Modifiers @?optional, @-hidden and @@other recipe{{}} are available too.
 - Keep the method wording of the source; do not invent steps or quantities. Guess a quantity only if the source truly omits it.
 
 Cooklang syntax reference:
