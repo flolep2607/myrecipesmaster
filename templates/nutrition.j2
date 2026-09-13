@@ -3,7 +3,8 @@
     No density conversion (cups/tbsp -> g). Add g_per_cup per ingredient if you ever need it. -#}
 {%- set ns = namespace(kcal=0, protein=0, carbs=0, fat=0, missing=[]) -%}
 {%- for i in ingredients -%}
-  {%- set nm = i.name | lower | split("|") | first | trim("?&+-@") | replace("-", "_") | replace(" ", "_") -%}
+  {%- set nm = i.name | lower | split("|") | first | trim("?&+-@") | replace("'", "")
+                     | replace("-", "_") | replace(" ", "_") -%}
   {%- set key = "ingredients." ~ nm -%}
   {%- set kcal = db(key ~ ".kcal") -%}
   {%- if kcal == "" -%}

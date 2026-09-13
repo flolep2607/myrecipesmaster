@@ -6,7 +6,8 @@
 {%- set ns = namespace(cents=0, missing=[], day="") -%}
 {%- for i in ingredients -%}
   {#- modifiers and aliases ride along in the name: @?lemon wedge|lemon wedges -#}
-  {%- set nm = i.name | lower | split("|") | first | trim("?&+-@") | replace("-", "_") | replace(" ", "_") -%}
+  {%- set nm = i.name | lower | split("|") | first | trim("?&+-@") | replace("'", "")
+                       | replace("-", "_") | replace(" ", "_") -%}
   {%- set key = "ingredients." ~ nm -%}
   {%- set cpb = db(key ~ ".cents_per_base") -%}
   {%- set base = db(key ~ ".base") -%}

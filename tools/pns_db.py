@@ -322,7 +322,9 @@ def cmd_stats(_):
 
 
 def slug(name):
-    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+    """Matches what cost.j2 builds from the ingredient name, apostrophes included: bird's eye
+    chilli -> birds_eye_chilli in both places, or the yaml is written where nothing looks."""
+    return re.sub(r"[^a-z0-9]+", "_", name.lower().replace("'", "")).strip("_")
 
 
 SIZE = re.compile(r"([\d.]+)\s*(kg|g|ml|l|ea|pk)\b", re.I)
