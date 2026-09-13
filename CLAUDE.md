@@ -23,7 +23,10 @@ plans/              weekly meal plans (YYYY-WW.md)
 **Import a recipe from a URL** — `cook import <url> > recipes/<course>/<Name>.cook`,
 then read it back and fix the parse: ingredients must be `@name{qty%unit}`, cookware `#pan{}`,
 timers `~{10%minutes}`. Add frontmatter: `title`, `servings`, `tags`, `source`, `time`.
-If `cook import` fails on the site, fetch the page and convert by hand.
+If `cook import` fails on the site, `./tools/ai_import.py <url> > recipes/<course>/<Name>.cook`
+does it with Gemini — same for YouTube links, which it reads as video. Keys go one per line
+in `config/gemini.keys` (gitignored); it starts on a random one and rotates past quota errors.
+Read the output back and check the parse either way.
 
 **Weekly plan** — write `plans/YYYY-WW.md` listing one recipe per day with its scale
 (`Name.cook:2`). Then one shopping list for the whole week:
