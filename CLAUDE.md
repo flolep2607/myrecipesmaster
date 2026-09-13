@@ -127,6 +127,12 @@ English so the names match `config/aisle.conf` and `config/products.map`. The si
 BBC Good Food, BBC Food, Marmiton, Budget Bytes, RecipeTin Eats and The Woks of Life, all
 parseable by recipe-scrapers.
 
+**Tags** — `config/tags.conf` is the whole vocabulary, grouped into effort, method, diet and main
+ingredient. Imports are handed the list and may use two to five of them; nothing else goes in a
+recipe. A tag never repeats what another key says — no `15 minutes` (that's `time:`), no `dinner`
+(`course:`), no `asian` (`cuisine:`). `./tools/ai_import.py tags` lists anything in the vault the
+vocabulary does not allow; add the tag to the file or retag the recipe.
+
 **Pictures** — `./tools/ai_import.py image "recipes/dinner/Name.cook"` saves the recipe's picture
 beside it as `Name.jpg`, which is the convention `cook server` and the apps read. Imports carry an
 `image:` url in the frontmatter; older files get one looked up from their `source:` page, and a

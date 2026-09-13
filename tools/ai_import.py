@@ -8,6 +8,7 @@
   ./tools/ai_import.py cook tofu              # search recipes.cooklang.org, already cooklang
   ./tools/ai_import.py have tofu "spring onion"  # recipes built from ingredients you have
   ./tools/ai_import.py image "recipes/dinner/Name.cook"   # fetch its picture alongside it
+  ./tools/ai_import.py tags                   # tags in use that config/tags.conf does not allow
   ./tools/ai_import.py selftest
 
 Use when `cook import` has no parser for the site, or the source is a video.
@@ -36,6 +37,7 @@ OMNI_KEY_FILE = ROOT / "config/omniroute.key"
 OMNI = "https://omniroute.masterchef.mom/v1/chat/completions"
 OMNI_MODEL = "free"
 SPEC = ROOT / "docs/extensions.md"
+TAGS = ROOT / "config/tags.conf"
 API = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent"
 ROTATE_ON = {429, 403, 500, 503}
 
@@ -47,7 +49,7 @@ title: <dish name>
 servings: <number>
 course: <breakfast, lunch, dinner, dessert, snack or baking>
 cuisine: <e.g. Thai — drop this line if the source does not say>
-tags: <comma, separated>
+tags: <two to five, from the list at the bottom, comma separated>
 image: <the image url if the source gave one, otherwise drop this line>
 source: {url}
 time: <1h30m form, no plurals>
@@ -70,6 +72,10 @@ Rules:
   which add to the first amount. Modifiers @?optional, @-hidden and @@other recipe{{}} are available too.
 - Keep the method wording of the source; do not invent steps or quantities. Guess a quantity only if the source truly omits it.
 - If extracted fields are given below, they are authoritative: use those ingredients, amounts and steps, and do not add any.
+
+Tags — use only these, two to five of them, and nothing that `course`, `cuisine` or `time`
+already says:
+{tags}
 
 Cooklang syntax reference:
 {spec}
@@ -230,6 +236,24 @@ def image(cook_file):
     print(f"{out.name}  {out.stat().st_size // 1024} KB")
 
 
+def tag_vocab():
+    return [w for line in TAGS.read_text().splitlines()
+            for w in [line.split("#")[0].strip()] if w and not w.startswith("[")]
+
+
+def audit_tags():
+    """Every tag in the vault that config/tags.conf does not allow."""
+    allowed, used = set(tag_vocab()), {}
+    for f in sorted(ROOT.glob("recipes/*/*.cook")):
+        found = re.search(r"^tags:\s*(.+)$", f.read_text(), re.M)
+        for tag in (t.strip().lower() for t in (found[1] if found else "").split(",")):
+            if tag and tag not in allowed:
+                used.setdefault(tag, []).append(f.stem)
+    for tag, files in sorted(used.items(), key=lambda kv: -len(kv[1])):
+        print(f"{tag:20} {len(files)}  {', '.join(files[:3])}")
+    print(f"{len(used)} tags outside the vocabulary" if used else "every tag is in the vocabulary")
+
+
 def parses(text):
     """Does our CookCLI accept this file? Shared recipes carry other people's units and habits."""
     out = subprocess.run(["cook", "recipe", "-f", "json"], input=text,
@@ -242,7 +266,9 @@ def is_url(s):
 
 
 def prompt(url, data, header="Fields extracted from the page"):
-    return PROMPT.format(url=url, spec=SPEC.read_text(),
+    allowed = " ".join(w for line in TAGS.read_text().splitlines()
+                       for w in [line.split("#")[0].strip()] if w and not w.startswith("["))
+    return PROMPT.format(url=url, spec=SPEC.read_text(), tags=allowed,
                          data=f"\n{header}:\n{data}\n" if data else "")
 
 
@@ -364,6 +390,8 @@ if __name__ == "__main__":
         selftest()
     elif args[:1] == ["find"]:
         print("\n".join(find(" ".join(args[1:]))))
+    elif args[:1] == ["tags"]:
+        audit_tags()
     elif args[:1] == ["image"]:
         image(args[1])
     elif args[:1] == ["have"]:
