@@ -16,6 +16,7 @@ tools/pns_db.py     catalogue + price history in data/paknsave.db (weekly sync)
 config/paknsave.stores  store ids, first is the default: Manukau, Royal Oak, Sylvia Park
 data/               SQLite DB and sync logs — gitignored, this is the price history, back it up
 plans/              weekly meal plans (YYYY-WW.md)
+docs/               vendored cooklang spec/conventions/extensions, `./docs/refresh.py` updates them
 ```
 
 ## Workflows

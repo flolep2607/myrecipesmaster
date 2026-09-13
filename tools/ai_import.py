@@ -15,8 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 KEYS_FILE = ROOT / "config/gemini.keys"
-SPEC_CACHE = ROOT / "data/cooklang-extensions.md"
-SPEC_URL = "https://raw.githubusercontent.com/cooklang/cooklang-rs/refs/heads/main/extensions.md"
+SPEC = ROOT / "docs/extensions.md"
 API = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent"
 ROTATE_ON = {429, 403, 500, 503}
 
@@ -50,14 +49,6 @@ Source: {url}
 """
 
 
-def spec():
-    if not SPEC_CACHE.exists():
-        SPEC_CACHE.parent.mkdir(parents=True, exist_ok=True)
-        with urllib.request.urlopen(SPEC_URL, timeout=30) as r:
-            SPEC_CACHE.write_bytes(r.read())
-    return SPEC_CACHE.read_text()
-
-
 def keys():
     raw = os.environ.get("GEMINI_API_KEYS") or (KEYS_FILE.read_text() if KEYS_FILE.exists() else "")
     ks = [k for k in re.split(r"[\s,]+", raw) if k and not k.startswith("#")]
@@ -69,7 +60,7 @@ def keys():
 
 def body(url):
     """YouTube goes in as video, anything else is read by the url_context tool."""
-    text = PROMPT.format(url=url, spec=spec())
+    text = PROMPT.format(url=url, spec=SPEC.read_text())
     if re.search(r"(youtube\.com|youtu\.be)/", url):
         return {"contents": [{"parts": [{"file_data": {"file_uri": url}}, {"text": text}]}]}
     return {"contents": [{"parts": [{"text": text}]}], "tools": [{"url_context": {}}]}
