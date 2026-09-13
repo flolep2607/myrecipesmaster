@@ -1,0 +1,35 @@
+{#- Per-recipe nutrition from datastore/ingredients/<name>.yaml
+    ponytail: grams/ml only (g,kg,ml,l) + per-unit for countable items.
+    No density conversion (cups/tbsp -> g). Add g_per_cup per ingredient if you ever need it. -#}
+{%- set ns = namespace(kcal=0, protein=0, carbs=0, fat=0, missing=[]) -%}
+{%- for i in ingredients -%}
+  {%- set key = "ingredients." ~ (i.name | lower | replace(" ", "_")) -%}
+  {%- set kcal = db(key ~ ".kcal") -%}
+  {%- if kcal == "" -%}
+    {%- set ns.missing = ns.missing + [i.name] -%}
+  {%- else -%}
+    {%- set unit = (i.quantity.unit | default("")) | lower -%}
+    {%- set val = (i.quantity.value | default("0")) | float -%}
+    {%- if unit == "g" or unit == "ml" -%}
+      {%- set f = val / 100 -%}
+    {%- elif unit == "kg" or unit == "l" -%}
+      {%- set f = val * 10 -%}
+    {%- else -%}
+      {%- set f = val -%}
+    {%- endif -%}
+    {%- set ns.kcal = ns.kcal + (kcal | float) * f -%}
+    {%- set ns.protein = ns.protein + ((db(key ~ ".protein") or 0) | float) * f -%}
+    {%- set ns.carbs = ns.carbs + ((db(key ~ ".carbs") or 0) | float) * f -%}
+    {%- set ns.fat = ns.fat + ((db(key ~ ".fat") or 0) | float) * f -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- set srv = (metadata.servings | default(1)) | float -%}
+# {{ metadata.title | default("Recipe") }} — nutrition
+
+| per | kcal | protein | carbs | fat |
+|---|---|---|---|---|
+| total | {{ ns.kcal | round }} | {{ ns.protein | round }}g | {{ ns.carbs | round }}g | {{ ns.fat | round }}g |
+| serving (x{{ srv | round }}) | {{ (ns.kcal / srv) | round }} | {{ (ns.protein / srv) | round }}g | {{ (ns.carbs / srv) | round }}g | {{ (ns.fat / srv) | round }}g |
+{% if ns.missing %}
+missing from datastore: {{ ns.missing | join(", ") }}
+{%- endif %}
