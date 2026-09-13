@@ -5,3 +5,5 @@ config/gemini.keys
 .venv/
 __pycache__/
 config/omniroute.key
+*.swp
+.*.sw?
