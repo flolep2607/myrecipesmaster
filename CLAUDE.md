@@ -97,6 +97,11 @@ words than the ingredient is called (`ingredient "reduced sugar ketchup" -s "tom
 `data/prices/ingredients/<name>.yaml` (today's price, gitignored). After a sync, `./tools/pns_db.py
 prices` rewrites every price file at once.
 
+**Unit weights** — `config/unit_weights.conf` says what one of a counted ingredient weighs
+(`garlic clove 4`, `onion 180`), so `@onion{1}` prices against a product sold by the kilo. Spoons
+are converted as volume (tsp 5 ml, tbsp 15 ml, cup 250 ml) and a millilitre is priced as a gram.
+`docs/products.md` is the whole mapping as a table — `./tools/pns_db.py table` regenerates it.
+
 **Cost** — `cook report -t templates/cost.j2 -d data/prices <recipe>[:scale]` gives cost per recipe
 and per serving. Note `-d data/prices`, not `-d datastore`: prices stay out of the committed
 datastore. Weights, volumes and things sold each are priced; a tbsp of oil is not, and the report

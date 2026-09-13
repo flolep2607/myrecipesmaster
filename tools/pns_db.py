@@ -36,7 +36,9 @@ PRESERVED = {"canned", "tinned", "frozen", "dried", "instant", "pickled"}
 BASES = {"100g": (100, "g"), "1kg": (1000, "g"), "100ml": (100, "ml"), "1l": (1000, "ml"),
          "ea": (1, "each"), "1ea": (1, "each")}
 # recipe units we can turn into those bases; anything else (tbsp, pinch, large) is countable
-UNITS = {"g": (1, "g"), "kg": (1000, "g"), "ml": (1, "ml"), "l": (1000, "ml")}
+# spoons are volume: exact for liquids, close enough for powders once g and ml price alike
+UNITS = {"g": (1, "g"), "kg": (1000, "g"), "ml": (1, "ml"), "l": (1000, "ml"),
+         "tsp": (5, "ml"), "tbsp": (15, "ml"), "cup": (250, "ml"), "pinch": (0.3, "ml")}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS stores(id TEXT PRIMARY KEY, label TEXT);
@@ -291,9 +293,12 @@ SIZE = re.compile(r"([\d.]+)\s*(kg|g|ml|l|ea|pk)\b", re.I)
 def from_size(cents, size):
     """Fallback for the ~12% of rows with no comparative price: divide the shelf price by the
     pack size on the label. "Pams Iodised Table Salt 1kg" -> cents per gram."""
-    m = SIZE.search(size or "")
-    if not m or not cents:
+    if not cents:
         return None, None
+    m = SIZE.search(size or "")
+    if not m:
+        # sold as one thing ("ea", "each", "bunch"): the shelf price is the price of one
+        return (cents, "each") if (size or "").strip() else (None, None)
     amount, unit = float(m[1]), m[2].lower()
     mult, base = {"g": (1, "g"), "kg": (1000, "g"), "ml": (1, "ml"), "l": (1000, "ml"),
                   "ea": (1, "each"), "pk": (1, "each")}[unit]
@@ -400,10 +405,12 @@ def candidates(conn, term, store, limit=10):
         recall, extra = cat_score(tw, c1, c2)
         per, _ = per_base(unit_cents, measure)
         return (head not in words(name) | words(f"{c1 or ''} {c2 or ''}"),
+                # mouthwash is called Fresh Mint too, so drop the non-food aisles before any
+                # name match is considered
+                (c0 or "").lower() in NON_FOOD,
                 # a product literally called Onion Powder beats the best-matching shelf category,
                 # because plenty of ingredients have no category of their own
                 not tw <= words(name),
-                (c0 or "").lower() in NON_FOOD,
                 # @tomato means the fresh one; canned tomatoes are cheaper per 100g and would
                 # win every tie. A recipe that wants them says @canned tomato.
                 not (fresh and c0 == "Fruit & Vegetables"),
@@ -687,9 +694,11 @@ def demo():
     assert to_base(1.5, "kg") == (1500, "g") and to_base(2, None) == (2, "each")
     assert to_base(3, "large") == (3, "each"), "countable units fall back to each"
     assert to_base(8, None, 5) == (40, "g"), "a known unit weight prices countable things"
+    assert to_base(2, "tbsp") == (30, "ml") and to_base(1, "tsp") == (5, "ml")
     assert to_base(200, "g", 5) == (200, "g"), "a real unit still wins over the weight table"
     assert from_size(149, "1kg") == (0.149, "g") and from_size(259, "44g")[1] == "g"
     assert from_size(699, "12pk") == (699 / 12, "each") and from_size(100, None) == (None, None)
+    assert from_size(299, "ea") == (299, "each"), "a cucumber sold each costs its shelf price"
     assert qty_value({"value": {"value": 600.0}}) == 600.0
     assert qty_value({"value": {"value": {"whole": 1, "num": 1, "den": 2}}}) == 1.5
     assert qty_value(None) is None and qty_value({"value": {"value": "a pinch"}}) is None
