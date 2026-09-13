@@ -99,11 +99,17 @@ def scrape(url):
         return None
 
 
-# plain HTML search pages, both known to recipe-scrapers: (search url, recipe url pattern)
+# plain HTML search pages, all known to recipe-scrapers: (search url, recipe url pattern).
+# The WordPress ones (?s=) also return roundups and about pages; scrape() drops those.
 SITES = [("https://www.bbcgoodfood.com/search?q=%s",
           r"https://www\.bbcgoodfood\.com/recipes/[a-z0-9-]+"),
          ("https://www.marmiton.org/recettes/recherche.aspx?aqt=%s",
-          r"https://www\.marmiton\.org/recettes/recette_[a-z0-9_-]+\.aspx")]
+          r"https://www\.marmiton\.org/recettes/recette_[a-z0-9_-]+\.aspx"),
+         ("https://www.bbc.co.uk/food/search?q=%s",
+          r"https://www\.bbc\.co\.uk/food/recipes/[a-z0-9_]+"),
+         ("https://www.budgetbytes.com/?s=%s", r"https://www\.budgetbytes\.com/[a-z0-9-]+/"),
+         ("https://www.recipetineats.com/?s=%s", r"https://www\.recipetineats\.com/[a-z0-9-]+/"),
+         ("https://thewoksoflife.com/?s=%s", r"https://thewoksoflife\.com/[a-z0-9-]+/")]
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/125 Safari/537.36"}
 
 
@@ -149,7 +155,16 @@ def cse(query, limit=8):
     return [i["link"] for i in r.get("items", [])][:limit]
 
 
-def find(query, limit=6):
+def recipe_slug(url):
+    """WordPress search pages link their own plumbing — /feed/, /wp-includes/, /tachyon/ — beside
+    the recipes. A recipe permalink there is a multi-word slug ending in a slash."""
+    if not url.endswith("/"):
+        return True                       # bbcgoodfood, bbc.co.uk and marmiton patterns are exact
+    slug = url.rstrip("/").rsplit("/", 1)[-1]
+    return slug.count("-") >= 2 and not slug.startswith("wp-")
+
+
+def find(query, limit=3):
     """Real recipe URLs for a search term. Google Programmable Search when it is set up, the two
     built-in site searches otherwise. Pages that exist, rather than a model's memory of one."""
     out = cse(query, limit)
@@ -163,7 +178,8 @@ def find(query, limit=6):
         except Exception as e:
             print(f"search for {query!r}: {type(e).__name__}", file=sys.stderr)
             continue
-        urls = [u for u in dict.fromkeys(re.findall(pattern, html)) if "/category/" not in u]
+        urls = [u for u in dict.fromkeys(re.findall(pattern, html))
+                if recipe_slug(u)]
         out += urls[:limit]
     return out
 
@@ -277,6 +293,10 @@ def selftest():
     assert "file_data" in json.dumps(body("https://youtu.be/x"))
     assert "url_context" in json.dumps(body("https://example.com/r"))
     assert is_url("https://x/y") and not is_url("tempeh fried rice, 20 min")
+    assert recipe_slug("https://www.budgetbytes.com/vegan-tofu-stir-fry/")
+    assert not recipe_slug("https://www.budgetbytes.com/feed/")
+    assert not recipe_slug("https://www.recipetineats.com/wp-includes/")
+    assert recipe_slug("https://www.marmiton.org/recettes/recette_brownies_16951.aspx")
     scraped = json.dumps(body("https://example.com/r", '{"ingredients": ["1 egg"]}'))
     assert "url_context" not in scraped and "1 egg" in scraped
     assert clean({"candidates": [{"content": {"parts": [{"text": " @egg{1} "}]}}]}) == "@egg{1}"
