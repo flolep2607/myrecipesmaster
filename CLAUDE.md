@@ -11,6 +11,8 @@ config/aisle.conf   shopping-list grouping, ordered like a PAK'nSAVE walk
 config/pantry.conf  what's in the kitchen; shopping-list subtracts it automatically
 datastore/ingredients/<name>.yaml   nutrition per ingredient (see below)
 templates/          Jinja2 report templates for `cook report`
+tools/pns.py        PAK'nSAVE price lookup (guest token, no login)
+config/paknsave.store  store id — PAK'nSAVE Royal Oak, 691 Manukau Road
 plans/              weekly meal plans (YYYY-WW.md)
 ```
 
@@ -44,6 +46,11 @@ fat: 1.0
 The template reports what's missing from the datastore — fill those in as they appear.
 Imported recipes often carry schema.org nutrition in their frontmatter; prefer that for
 per-recipe totals and use the datastore for hand-written ones.
+
+**Prices** — `./tools/pns.py price butter milk` for named items, or price a whole list:
+`cook shopping-list <recipes> --ingredients-only | ./tools/pns.py price -` (prints a total).
+`./tools/pns.py stores <town>` lists store ids if the store ever changes. Prices are
+store-specific and live, so don't cache them in the datastore unless asked.
 
 **Health** — `cook doctor` before committing. `cook server` for a local browsable cookbook.
 
