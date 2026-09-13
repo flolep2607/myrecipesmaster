@@ -27,7 +27,10 @@ MAP_FILE = pns.ROOT / "config/products.map"      # ingredient -> product_id, han
 NUT_DIR = pns.ROOT / "datastore/ingredients"     # nutrition, committed
 PRICE_DIR = pns.ROOT / "data/prices/ingredients" # today's prices, gitignored, regenerated
 # PAK'nSAVE's comparative price, as (amount of base units, base)
+LABEL = "lower(ifnull(p.brand,'') || ' ' || p.name || ' ' || ifnull(p.size,''))"
+CATS = "lower(ifnull(p.category1,'') || ' ' || ifnull(p.category2,''))"
 NON_FOOD = {"household & cleaning", "health & body", "pets", "baby & toddler"}
+PRESERVED = {"canned", "tinned", "frozen", "dried", "instant", "pickled"}
 BASES = {"100g": (100, "g"), "1kg": (1000, "g"), "100ml": (100, "ml"), "1l": (1000, "ml"),
          "ea": (1, "each"), "1ea": (1, "each")}
 # recipe units we can turn into those bases; anything else (tbsp, pinch, clove) can't be priced
@@ -330,42 +333,83 @@ def pin(name, pid, label):
     MAP_FILE.write_text("\n".join(sorted(l for l in lines if l.strip())) + "\n")
 
 
+def singular(w):
+    """Crude but careful: Sauces -> sauce, not sauc, or "soy sauce" stops matching Soy Sauces."""
+    if w.endswith(("oes", "ses", "xes", "zes", "ches", "shes")):
+        return w[:-2]
+    return w[:-1] if w.endswith("s") and not w.endswith("ss") else w
+
+
+def words(s):
+    """Lowercase words, singularised, so Eggs/Tomatoes/Shallots match egg/tomato/shallot."""
+    return {singular(w) for w in re.findall(r"[a-z]+", (s or "").lower())}
+
+
+def cat_score(term_words, c1, c2):
+    """How well a shelf category fits an ingredient: how much of the ingredient it covers, then
+    how much else it drags in. 'Butter' beats 'Peanut & Nut Butter'; 'Olive & Avocado Oil' beats
+    'Dairy Free Spreads'; 'Onions, Leeks & Shallots' beats 'Other Frozen Vegetables'."""
+    def level(name):
+        cat = words(name)
+        hit = len(term_words & cat) / len(term_words)
+        # a category that matches nothing must not win on being short ("Sparkling Water" for lemon)
+        return (-hit, len(cat - term_words) if hit else 0)
+
+    # score the levels apart and keep the best: "Chilli, Garlic & Ginger" is a tight fit for
+    # garlic, but reading it together with its parent buries it under garlic bread
+    return min(level(c1 or ""), level(c2 or ""))
+
+
 def candidates(conn, term, store, limit=10):
     """Products matching `term` with a price today. A bare LIKE ranks body wash above milk and
-    Leggo's above eggs, so score on the shelf's own categories, then a whole word in the product
-    name (plural tolerated), then price."""
-    rows = conn.execute(
-        "SELECT p.product_id, trim(ifnull(p.brand,'') || ' ' || p.name || ' ' || ifnull(p.size,'')),"
-        "       p.name, p.category0, p.category1, p.category2, pr.cents, pr.unit_cents, pr.unit_measure "
-        "FROM products p JOIN prices pr ON pr.product_id = p.product_id "
-        "WHERE pr.store_id = ? AND pr.day = (SELECT max(day) FROM prices) "
-        "  AND lower(ifnull(p.brand,'') || ' ' || p.name || ' ' || ifnull(p.size,'')) LIKE ? LIMIT 400",
-        (store, f"%{term.lower()}%")).fetchall()
-    word = re.compile(rf"\b{re.escape(term)}e?s?\b")
-
-    exact = {term, term + "s", term + "es"}     # the shelf calls it Eggs, Butter, Milk
+    Leggo's above eggs, so rank on the shelf's own category tree first, then the product name."""
+    sql = ("SELECT p.product_id, trim(ifnull(p.brand,'') || ' ' || p.name || ' ' || ifnull(p.size,'')),"
+           "       p.name, p.category0, p.category1, p.category2, pr.cents, pr.unit_cents, pr.unit_measure "
+           "FROM products p JOIN prices pr ON pr.product_id = p.product_id "
+           "WHERE pr.store_id = ? AND pr.day = (SELECT max(day) FROM prices) AND ")
+    # every word of the ingredient somewhere in the label, or any one word in the category tree:
+    # no product is called "canned tomato", the only "vegetable oil" on the shelf is a sardine,
+    # and the cooking oil aisle is called "Oil & Vinegar"
+    parts = [singular(w) for w in term.lower().split()]
+    where = ("(" + " AND ".join([f"{LABEL} LIKE ?"] * len(parts)) + " OR "
+             + " OR ".join([f"{CATS} LIKE ?"] * len(parts)) + ")")
+    rows = conn.execute(sql + where, (store, *(f"%{w}%" for w in parts * 2))).fetchall()
+    tw = words(term)
+    fresh = not (tw & PRESERVED)
+    # English compounds put the head noun last: garlic POWDER, vegetable OIL, reduced sugar
+    # KETCHUP. Without this, "garlic powder" lands on fresh garlic and "vegetable oil" on carrots.
+    head = parts[-1]
 
     def rank(r):
         _, _, name, c0, c1, c2, cents, unit_cents, measure = r
+        recall, extra = cat_score(tw, c1, c2)
         per, _ = per_base(unit_cents, measure)
-        return (not (exact & {(c1 or "").lower(), (c2 or "").lower()}),
-                not word.search(f"{c1 or ''} {c2 or ''}".lower()),
+        return (head not in words(name) | words(f"{c1 or ''} {c2 or ''}"),
+                # a product literally called Onion Powder beats the best-matching shelf category,
+                # because plenty of ingredients have no category of their own
+                not tw <= words(name),
                 (c0 or "").lower() in NON_FOOD,
-                not word.search((name or "").lower()),
-                # bucketed: a name two words longer shouldn't outrank one half the price
-                min(len(set(re.findall(r"[a-z]+", (name or "").lower())) - set(term.split())), 2),
+                # @tomato means the fresh one; canned tomatoes are cheaper per 100g and would
+                # win every tie. A recipe that wants them says @canned tomato.
+                not (fresh and c0 == "Fruit & Vegetables"),
+                recall,
+                extra,
                 per if per else (cents or 1 << 30))
 
     scored = sorted(rows, key=rank)
     if not scored:
         return []
-    # cents/ml and cents/each are not comparable numbers: among the best-matching rows, rank the
-    # base most of them use first, so eggs beat egg-white-by-the-litre instead of losing on scale
-    tier = rank(scored[0])[:3]
-    bases = [per_base(r[7], r[8])[1] for r in scored if rank(r)[:3] == tier]
-    modal = max(set(bases), key=bases.count) if bases else None
-    scored.sort(key=lambda r: rank(r)[:3] + (per_base(r[7], r[8])[1] != modal,) + rank(r)[3:])
+    # cents/each is not comparable with cents/gram, so among the rows that matched equally well,
+    # price against whichever of the two the tier mostly uses: eggs by the dozen, not egg white
+    # by the litre
+    tier = rank(scored[0])[:6]
+    group = lambda r: per_base(r[7], r[8])[1] == "each"   # a gram and a millilitre are the same
+    groups = [group(r) for r in scored if rank(r)[:6] == tier]   # money; an item is not
+    modal = max(set(groups), key=groups.count)
+    scored.sort(key=lambda r: rank(r)[:6] + (group(r) != modal,) + rank(r)[6:])
     return [(r[0], r[1], r[6], r[7], r[8]) for r in scored[:limit]]
+
+
 
 
 def write_price(conn, name, pid, store, label):
@@ -468,6 +512,11 @@ def shopping_list(args):
     return items
 
 
+def same(a, b):
+    """A gram of soy sauce is a millilitre of it, close enough to price a recipe with."""
+    return a == b or {a, b} == {"g", "ml"}
+
+
 def cmd_basket(args):
     """What one shopping list costs at each store, valued at today's unit prices."""
     if not args:
@@ -492,9 +541,9 @@ def cmd_basket(args):
             if not row:
                 continue
             per, pbase = per_base(row[1], row[2])
-            if not per or pbase != base:
+            if not (per and same(pbase, base)):
                 per, pbase = from_size(row[0], size and size[0])
-            if per and pbase == base:
+            if per and same(pbase, base):
                 costs[label] = per * amount
         # an item missing at one store would make that store look cheaper, so drop it from all
         if len(costs) == len(stores):
@@ -558,6 +607,17 @@ def demo():
     # the label after # must not confuse the name, or re-pinning stacks duplicate lines
     assert map_key("spring onion 5001-EA-000  # Fresh Spring Onions") == "spring onion"
     assert map_key("# comment") == "" and map_key("") == ""
+    assert words("Onions, Leeks & Shallots") == {"onion", "leek", "shallot"}
+    assert words("Soy & Asian Sauces") > words("soy sauce"), "Sauces must singularise to sauce"
+    assert singular("tomatoes") == "tomato" and singular("glass") == "glass"
+    assert same("g", "ml") and same("each", "each") and not same("g", "each")
+    assert cat_score(words("butter"), "Butter & Margarine", "Butter") < \
+           cat_score(words("butter"), "Jams, Honey & Spreads", "Peanut & Nut Butter")
+    assert cat_score(words("garlic"), "Fresh Salad & Herbs", "Chilli, Garlic & Ginger") < \
+           cat_score(words("garlic"), "Burger Buns, Rolls & Garlic Bread", "Burger Buns & Bread Rolls")
+    assert cat_score(words("olive oil"), "Oil & Vinegar", "Olive & Avocado Oil") < \
+           cat_score(words("olive oil"), "Butter & Margarine", "Dairy Free Spreads")
+    assert words("frozen peas") & PRESERVED, "a qualified name must not prefer fresh"
     print("ok")
 
 

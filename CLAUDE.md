@@ -87,8 +87,12 @@ Prices are store-specific and move weekly — read them from the DB, never copy 
 
 **Ingredient → product** — `./tools/pns_db.py ingredient "plain flour"` pins the best-matching
 catalogue product to a recipe ingredient name, in `config/products.map` (committed, hand-editable).
-`-p N` picks another of the listed matches, `-s "other words"` searches different words than the
-ingredient is called (`ingredient "cooked white rice" -s "long grain rice"`). Each pin writes
+Matching leans on PAK'nSAVE's own category tree (`Fresh Salad & Herbs > Chilli, Garlic & Ginger`
+is what makes `garlic` land on garlic rather than garlic bread), plus the head noun of the
+ingredient — `garlic POWDER`, `vegetable OIL` — and prefers fresh produce unless the name says
+canned/frozen/dried. Local naming still beats it sometimes: nothing here is called "vegetable oil"
+or "ketchup". `-p N` picks another of the listed matches, `-s "other words"` searches different
+words than the ingredient is called (`ingredient "reduced sugar ketchup" -s "tomato sauce"`). Each pin writes
 `datastore/ingredients/<name>.yaml` (nutrition, only once `enrich` has reached that product) and
 `data/prices/ingredients/<name>.yaml` (today's price, gitignored). After a sync, `./tools/pns_db.py
 prices` rewrites every price file at once.
