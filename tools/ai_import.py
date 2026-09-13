@@ -38,6 +38,7 @@ OMNI = "https://omniroute.masterchef.mom/v1/chat/completions"
 OMNI_MODEL = "free"
 SPEC = ROOT / "docs/extensions.md"
 TAGS = ROOT / "config/tags.conf"
+COOKWARE = ROOT / "config/cookware.conf"
 API = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent"
 ROTATE_ON = {429, 403, 500, 503}
 
@@ -76,6 +77,10 @@ Rules:
 Tags — use only these, two to five of them, and nothing that `course`, `cuisine` or `time`
 already says:
 {tags}
+
+Cookware — this kitchen has these and nothing else, so call the equipment by these
+names and do not reach for anything that is not here:
+{cookware}
 
 Cooklang syntax reference:
 {spec}
@@ -241,6 +246,44 @@ def tag_vocab():
             for w in [line.split("#")[0].strip()] if w and not w.startswith("[")]
 
 
+def cookware_vocab():
+    """{name or alias: the name a recipe should use}, and the names we do not own."""
+    canon, missing, section = {}, set(), ""
+    for line in COOKWARE.read_text().splitlines():
+        line = line.split("#")[0].strip()
+        if line.startswith("["):
+            section = line.strip("[]")
+        elif line:
+            name, _, aliases = line.partition("=")
+            name = name.strip()
+            canon.update({a: name for a in [name] + [x.strip() for x in aliases.split(",") if x.strip()]})
+            if section == "missing":
+                missing.add(name)
+    return canon, missing
+
+
+def cookware_used(text):
+    return {(a or b).strip().lower()
+            for a, b in re.findall(r"#&?([^{@~#\n]+)\{[^}]*\}|#&?([A-Za-z-]+)", text)}
+
+
+def audit_cookware():
+    """Cookware the vault names that config/cookware.conf does not know, or does not have."""
+    canon, missing = cookware_vocab()
+    unknown, absent, alias = {}, {}, {}
+    for f in sorted(ROOT.glob("recipes/*/*.cook")):
+        for item in cookware_used(f.read_text()):
+            name = canon.get(item)
+            bucket = unknown if name is None else absent if name in missing else alias if name != item else {}
+            bucket.setdefault(item, []).append(f.stem)
+    for label, found in (("not in config/cookware.conf", unknown), ("we do not have", absent),
+                         ("another name for one we have", alias)):
+        for item, files in sorted(found.items(), key=lambda kv: -len(kv[1])):
+            print(f"{item:22} {label:26} {', '.join(sorted(set(files)))}")
+    if not unknown and not absent and not alias:
+        print("every recipe cooks with gear we have")
+
+
 def audit_tags():
     """Every tag in the vault that config/tags.conf does not allow."""
     allowed, used = set(tag_vocab()), {}
@@ -266,9 +309,9 @@ def is_url(s):
 
 
 def prompt(url, data, header="Fields extracted from the page"):
-    allowed = " ".join(w for line in TAGS.read_text().splitlines()
-                       for w in [line.split("#")[0].strip()] if w and not w.startswith("["))
-    return PROMPT.format(url=url, spec=SPEC.read_text(), tags=allowed,
+    canon, missing = cookware_vocab()
+    return PROMPT.format(url=url, spec=SPEC.read_text(), tags=" ".join(tag_vocab()),
+                         cookware=", ".join(sorted(set(canon.values()) - missing)),
                          data=f"\n{header}:\n{data}\n" if data else "")
 
 
@@ -381,6 +424,9 @@ def selftest():
     assert "url_context" not in scraped and "1 egg" in scraped
     assert clean({"candidates": [{"content": {"parts": [{"text": " @egg{1} "}]}}]}) == "@egg{1}"
     assert unfence("```cooklang\n@egg{1}\n```") == "@egg{1}"
+    assert cookware_used("a #skillet{} then #oven{} and #kettle and simmer") == {"skillet", "oven", "kettle"}
+    canon, missing = cookware_vocab()
+    assert canon["instant pot"] == "pressure cooker" and "grill" in missing
     print("ok")
 
 
@@ -392,6 +438,8 @@ if __name__ == "__main__":
         print("\n".join(find(" ".join(args[1:]))))
     elif args[:1] == ["tags"]:
         audit_tags()
+    elif args[:1] == ["cookware"]:
+        audit_cookware()
     elif args[:1] == ["image"]:
         image(args[1])
     elif args[:1] == ["have"]:

@@ -133,6 +133,14 @@ recipe. A tag never repeats what another key says — no `15 minutes` (that's `t
 (`course:`), no `asian` (`cuisine:`). `./tools/ai_import.py tags` lists anything in the vault the
 vocabulary does not allow; add the tag to the file or retag the recipe.
 
+**Cookware** — `config/cookware.conf` is what the kitchen has: oven, air fryer, slow cooker,
+pressure cooker, kettle, pans and the usual bowls. One name per thing, with the other names for it
+folded onto the right of the `=` (`frying pan = skillet, non-stick frying pan, pan`), and a
+`[missing]` section for gear we do not own — grill, food processor, stand mixer, microwave, deep
+fryer. Imports are handed the left-hand names. `./tools/ai_import.py cookware` flags a recipe
+calling for gear we lack, using a name the file does not know, or using an alias instead of the
+canonical name; a recipe wanting something from `[missing]` needs adapting before it can be cooked.
+
 **Pictures** — `./tools/ai_import.py image "recipes/dinner/Name.cook"` saves the recipe's picture
 beside it as `Name.jpg`, which is the convention `cook server` and the apps read. Imports carry an
 `image:` url in the frontmatter; older files get one looked up from their `source:` page, and a
