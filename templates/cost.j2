@@ -13,8 +13,11 @@
   {%- set q = i.quantity | default(none) -%}
   {%- set unit = (q.unit | default("")) | lower if q else "" -%}
   {%- set val = (q.value | default(0)) | float if q else 0 -%}
-  {%- if cpb == "" or not q -%}
+  {%- if cpb == "" -%}
     {%- set ns.missing = ns.missing + [i.name | lower | split("|") | first | trim("?&+-@")] -%}
+  {%- elif not q -%}
+    {#- a reference back to an earlier mention, or an unmeasured pinch: the amount is already
+        counted, or there is no amount to count -#}
   {%- else -%}
     {%- set ns.day = db(key ~ ".day") -%}
     {%- set spoons = {"tsp": 5, "tbsp": 15, "cup": 250, "pinch": 0.3} -%}

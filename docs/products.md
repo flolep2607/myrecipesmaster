@@ -16,7 +16,7 @@
 | egg whites | Zeagold Egg White Natural Protein 980ml | $13.49 | $1.38/100ml |  |  |
 | flaked almond | Pams Sliced Almonds 70g | $2.49 | $3.56/100g |  |  |
 | frozen mixed vegetables | Pams Mixed Veges 1kg | $3.29 | $0.33/100g |  |  |
-| garlic | Jinning Greenway White Garlic 450g | $1.00 | $0.22/100g |  |  |
+| garlic | Jinning Greenway White Garlic 450g | $1.00 | $0.22/100g | 4 g |  |
 | garlic clove | Jinning Greenway White Garlic 450g | $1.00 | $0.22/100g | 4 g |  |
 | garlic powder | Mrs Rogers Naturals Eco Garlic Powder 40g | $1.99 | $4.97/100g |  |  |
 | ginger | Ginger kg | $6.99 | $0.70/100g |  |  |
@@ -41,9 +41,10 @@
 | salt | Pams Iodised Table Salt 1kg | $1.49 | $0.15/100g |  |  |
 | sesame oil | Pams Sesame Oil 200ml | $5.29 | $2.65/100ml |  |  |
 | soy sauce | Pearl River Bridge Superior Dark Soy Sauce 500ml | $2.00 | $0.40/100ml |  |  |
-| spring onion | Spring Onions ea | $2.99 | $2.99 each | 15 g |  |
+| spring onion | Mama San Chopped Spring Onion 454g | $4.99 | $1.10/100g | 15 g |  |
 | star anise | Mrs Rogers Premium Eco Star Anise 11g | $3.02 | $27.45/100g |  |  |
 | sugar | Chelsea White Sugar 1.5kg | $3.00 | $0.20/100g |  |  |
 | sunflower or vegetable oil | Pams Canola Oil 500ml | $1.79 | $0.36/100ml |  |  |
+| tempeh | Tonzu Organic Tempeh 250g | $6.19 | $2.48/100g |  |  |
 | tomato | Loose Red Tomatoes kg | $7.99 | $0.80/100g |  |  |
 | vegetable oil | Pams Canola Oil 500ml | $1.79 | $0.36/100ml |  |  |

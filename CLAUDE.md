@@ -107,6 +107,13 @@ and per serving. Note `-d data/prices`, not `-d datastore`: prices stay out of t
 datastore. Weights, volumes and things sold each are priced; a tbsp of oil is not, and the report
 lists what it skipped. Products with no shelf unit price fall back to the pack size on the label.
 
+**Ideas from the specials** — `./tools/pns_db.py ideas -n 6` takes this week's specials at the
+default store (cheapest per shelf, a few per aisle, nothing that is already a finished meal), asks
+the free endpoint for fast easy dinners built on them, and checks every ingredient it names against
+what that store actually stocks. Turn one into a recipe with a brief instead of a URL:
+`./tools/ai_import.py "tempeh egg fried rice, 20 minutes, for 2, tempeh egg rice soy sauce" >
+recipes/dinner/Name.cook`, then read it back like any import.
+
 **Which store** — `./tools/pns_db.py basket <recipe>[:scale] ...` totals a whole list at each
 configured store, cheapest first. An ingredient that isn't stocked at every store is left out of
 every total rather than making one store look cheap.

@@ -2,6 +2,7 @@
 """Import a recipe into Cooklang with Gemini. Web pages and YouTube videos.
 
   ./tools/ai_import.py <url> > recipes/dinner/Name.cook
+  ./tools/ai_import.py "tempeh egg fried rice, 20 min, tempeh egg rice soy sauce"  # no url: a brief
   ./tools/ai_import.py <url> -m gemini-3.8-pro      # default: gemini-3.8-flash
   ./tools/ai_import.py selftest
 
@@ -91,9 +92,13 @@ def scrape(url):
         return None
 
 
-def prompt(url, data):
+def is_url(s):
+    return s.startswith(("http://", "https://"))
+
+
+def prompt(url, data, header="Fields extracted from the page"):
     return PROMPT.format(url=url, spec=SPEC.read_text(),
-                         data=f"\nFields extracted from the page:\n{data}\n" if data else "")
+                         data=f"\n{header}:\n{data}\n" if data else "")
 
 
 def body(url, data=None):
@@ -151,7 +156,10 @@ def unfence(text):
 
 def recipe(url, model):
     """Scraped fields are plain text work for the free endpoint; reading the page
-    or the video is Gemini's job, and so is anything the free endpoint drops."""
+    or the video is Gemini's job, and so is anything the free endpoint drops.
+    A brief instead of a URL is plain text work too — the model writes the recipe."""
+    if not is_url(url):   # a brief, not a page: the model writes the recipe from it
+        return unfence(omni(prompt("kitchen idea", url, "What to cook")) or "") + "\n"
     data = None if re.search(r"(youtube\.com|youtu\.be)/", url) else scrape(url)
     text = omni(prompt(url, data)) if data else None
     text = text or clean(generate(url, data, model))
@@ -165,6 +173,7 @@ def selftest():
     assert [k for k in re.split(r"[\s,]+", "a, b\nc") if k] == ["a", "b", "c"]
     assert "file_data" in json.dumps(body("https://youtu.be/x"))
     assert "url_context" in json.dumps(body("https://example.com/r"))
+    assert is_url("https://x/y") and not is_url("tempeh fried rice, 20 min")
     scraped = json.dumps(body("https://example.com/r", '{"ingredients": ["1 egg"]}'))
     assert "url_context" not in scraped and "1 egg" in scraped
     assert clean({"candidates": [{"content": {"parts": [{"text": " @egg{1} "}]}}]}) == "@egg{1}"
