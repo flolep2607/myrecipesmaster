@@ -25,7 +25,7 @@ comma-separated. A random key starts each run and quota/server errors fall
 through to the next one. config/omniroute.key holds the one free-endpoint key,
 or $OMNIROUTE_KEY.
 """
-import html, json, os, random, re, subprocess, sys, urllib.error, urllib.parse, urllib.request
+import html, json, os, random, re, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -60,6 +60,8 @@ Rules:
 - Ingredient names lowercase and singular (@egg, @onion), multi-word ones need the braces: @olive oil{{2%tbsp}}.
 - Metric units (g, ml, tbsp, tsp), servings always a plain number. One amount per ingredient:
   no ranges and no "1 pinch, 2 tsp" — pick the amount the method actually uses.
+- A quantity is {{amount%unit}} and nothing else. Preparation goes in a note after it:
+  @rice{{400%g}}(washed), never @rice{{400%g%washed}}.
 - Drop any metadata line you have nothing to put on it rather than leaving it empty, and never
   emit a `>> [mode]: ...` line.
 - Write the recipe in English even when the source is not: the aisle file, the pantry and the
@@ -278,14 +280,19 @@ def gemini(payload, model):
     for i, key in enumerate(keys()):
         req = urllib.request.Request(API % model, data=payload,
                                      headers={"Content-Type": "application/json", "x-goog-api-key": key})
-        try:
-            with urllib.request.urlopen(req, timeout=600) as r:
-                return json.load(r)
-        except urllib.error.HTTPError as e:
-            if e.code not in ROTATE_ON:
-                sys.exit(f"gemini {e.code}: {e.read().decode()[:500]}")
-            last = f"{e.code} on key {i + 1}"
-            print(f"key {i + 1}: {e.code}, trying next", file=sys.stderr)
+        for attempt in range(3):          # 503 means overloaded, and it clears in seconds
+            try:
+                with urllib.request.urlopen(req, timeout=600) as r:
+                    return json.load(r)
+            except urllib.error.HTTPError as e:
+                if e.code not in ROTATE_ON:
+                    sys.exit(f"gemini {e.code}: {e.read().decode()[:500]}")
+                last = f"{e.code} on key {i + 1}"
+                if e.code != 503 or attempt == 2:
+                    print(f"key {i + 1}: {e.code}, trying next", file=sys.stderr)
+                    break
+                print(f"key {i + 1}: 503, retrying in {4 * (attempt + 1)}s", file=sys.stderr)
+                time.sleep(4 * (attempt + 1))
     sys.exit(f"all keys exhausted ({last})")
 
 
