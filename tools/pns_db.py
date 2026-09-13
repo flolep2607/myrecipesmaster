@@ -34,6 +34,9 @@ PRICE_DIR = pns.ROOT / "data/prices/ingredients" # today's prices, gitignored, r
 LABEL = "lower(ifnull(p.brand,'') || ' ' || p.name || ' ' || ifnull(p.size,''))"
 CATS = "lower(ifnull(p.category1,'') || ' ' || ifnull(p.category2,''))"
 NON_FOOD = {"household & cleaning", "health & body", "pets", "baby & toddler"}
+# aisles we neither detail nor re-crawl: nothing here goes in a recipe, and the age-restricted
+# ones 404 on the per-product endpoint anyway
+SKIP_AISLES = ("Health & Body", "Household & Cleaning", "Pets", "Beer, Wine & Cider")
 PRESERVED = {"canned", "tinned", "frozen", "dried", "instant", "pickled"}
 BASES = {"100g": (100, "g"), "1kg": (1000, "g"), "100ml": (100, "ml"), "1l": (1000, "ml"),
          "ea": (1, "each"), "1ea": (1, "each")}
@@ -127,9 +130,21 @@ def rows_for(p, store, day):
     return product, price
 
 
+def skip_buckets(conn):
+    """category1 buckets that are entirely non-food, learned from what has already been crawled.
+    A bucket with even one food product in it is left alone."""
+    marks = ",".join("?" * len(SKIP_AISLES))
+    return {r[0] for r in conn.execute(
+        f"SELECT category1 FROM products WHERE category1 IS NOT NULL GROUP BY category1 "
+        f"HAVING sum(category0 IN ({marks})) = count(*)", SKIP_AISLES)}
+
+
 def sync_store(conn, api, store, label, day):
     t0, seen = time.time(), {}
-    buckets = api.facets(store, "category1NI")
+    skip = skip_buckets(conn)
+    buckets = {c: n for c, n in api.facets(store, "category1NI").items() if c not in skip}
+    if skip:
+        print(f"{label}: skipping {len(skip)} non-food categories", flush=True)
     print(f"{label}: {len(buckets)} categories, {sum(buckets.values())} slots", flush=True)
     for i, (cat, count) in enumerate(sorted(buckets.items()), 1):
         pages = min(-(-count // PAGE), MAX_PAGES)
@@ -202,7 +217,9 @@ def cmd_enrich(args):
     store = pns.my_stores()[0][0]
     limit = int(args[0]) if args and args[0].isdigit() else 0
     todo = [r[0] for r in conn.execute(
-        "SELECT product_id FROM products WHERE detailed IS NULL ORDER BY product_id")]
+        "SELECT product_id FROM products WHERE detailed IS NULL "
+        f"AND ifnull(category0,'') NOT IN ({','.join('?' * len(SKIP_AISLES))}) ORDER BY product_id",
+        SKIP_AISLES)]
     if limit:
         todo = todo[:limit]
     print(f"{len(todo)} products to detail, {workers} at a time", flush=True)
