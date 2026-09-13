@@ -618,11 +618,20 @@ def cmd_ideas(args):
     print("\nimport one with: ./tools/ai_import.py <url> > recipes/dinner/<Name>.cook", file=sys.stderr)
 
 
-def cmd_table(_):
+TABLE = pns.ROOT / "docs/products.md"
+
+
+def table():
     """The mapping as markdown: what each ingredient buys, what it costs, what it's made of."""
     conn, grams = db(), weights()
     store = pns.my_stores()[0]
-    print(f"| ingredient | product | price | per | one is | kcal/100 |\n|---|---|---|---|---|---|")
+    out = [f"# Ingredients → PAK'nSAVE {store[1]}",
+           "",
+           "Written by `./tools/pns_db.py prices`; edit `config/products.map` and"
+           " `config/unit_weights.conf`, not this file.",
+           "",
+           "| ingredient | product | price | per | one is | kcal/100 |",
+           "|---|---|---|---|---|---|"]
     for name, pid in sorted(pins().items()):
         row = conn.execute(
             "SELECT trim(ifnull(p.brand,'') || ' ' || p.name || ' ' || ifnull(p.size,'')), "
@@ -639,7 +648,12 @@ def cmd_table(_):
             per, base = from_size(cents, size)
         unit = (f"${per / 100:.2f} each" if base == "each" else f"${per:.2f}/100{base}") if per else ""
         g = f"{grams[name]:g} g" if name in grams else ""
-        print(f"| {name} | {label} | ${cents / 100:.2f} | {unit} | {g} | {kcal or ''} |")
+        out.append(f"| {name} | {label} | ${cents / 100:.2f} | {unit} | {g} | {kcal or ''} |")
+    return "\n".join(out) + "\n"
+
+
+def cmd_table(_):
+    print(table(), end="")
 
 
 def cmd_suggest(args):
@@ -688,6 +702,37 @@ def cmd_apply(args):
     cmd_prices([])
 
 
+def cmd_apply(args):
+    """Read decisions on stdin and pin them all: `<ingredient> | <search or -> | <n> | <grams or ->`,
+    the format the ingredient-picking agents report in."""
+    conn, store = db(), pns.my_stores()[0]
+    lines = sys.stdin if args == ["-"] else Path(args[0]).read_text().splitlines()
+    gram_lines, done = [], 0
+    for ln in lines:
+        parts = [f.strip() for f in ln.split("|")]
+        if len(parts) != 4 or not parts[0] or parts[0].startswith("#"):
+            continue
+        name, search, pick, grams = parts
+        hits = candidates(conn, (search if search != "-" else name).lower(), store[0])
+        n = int(pick) - 1 if pick.isdigit() else 0
+        if not hits or n >= len(hits):
+            print(f"  no match for {name} ({search})", file=sys.stderr)
+            continue
+        pid, label = hits[n][0], hits[n][1]
+        pin(name.lower(), pid, label)
+        if grams not in ("-", ""):
+            gram_lines.append(f"{name.lower()} {grams}")
+        done += 1
+        print(f"{name} -> {label}")
+    if gram_lines:
+        keep = [ln for ln in (WEIGHTS_FILE.read_text().splitlines() if WEIGHTS_FILE.exists() else [])
+                if ln.split("#")[0].strip().rpartition(" ")[0] not in
+                {g.rpartition(" ")[0] for g in gram_lines}]
+        WEIGHTS_FILE.write_text("\n".join(sorted(x for x in keep + gram_lines if x.strip())) + "\n")
+    print(f"{done} pinned, {len(gram_lines)} unit weights", file=sys.stderr)
+    cmd_prices([])
+
+
 def cmd_prices(_):
     """Rewrite every pinned price yaml from the newest sync."""
     conn, store = db(), pns.my_stores()[0]
@@ -696,7 +741,8 @@ def cmd_prices(_):
         label = conn.execute("SELECT trim(ifnull(brand,'') || ' ' || name) FROM products "
                              "WHERE product_id = ?", (pid,)).fetchone()
         n += bool(write_price(conn, name, pid, store[0], label[0] if label else pid))
-    print(f"{n} price files in {PRICE_DIR} @ {store[1]}")
+    TABLE.write_text(table())          # the table is derived, so never let it go stale
+    print(f"{n} price files in {PRICE_DIR}, {TABLE.name} rewritten @ {store[1]}")
 
 
 def qty_value(v):

@@ -1,3 +1,7 @@
+# Ingredients → PAK'nSAVE Manukau
+
+Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/unit_weights.conf`, not this file.
+
 | ingredient | product | price | per | one is | kcal/100 |
 |---|---|---|---|---|---|
 | bean sprout | Pams Mung Bean Sprouts 200g | $2.49 | $1.25/100g | 30 g |  |
@@ -76,8 +80,8 @@
 | red pepper | Red Capsicum ea | $2.99 | $2.99 each | 180 g |  |
 | reduced sugar ketchup | Gregg's 60% Less Sugar Tomato Sauce 540g | $3.99 | $0.74/100g |  |  |
 | rice | Fortune Long Grain Rice 1kg | $2.00 | $0.20/100g |  |  |
-| rice vinegar | Obento Rice Wine Vinegar 250ml | $2.79 | $1.12/100ml |  |  |
-| rice wine vinegar | Obento Rice Wine Vinegar 250ml | $2.79 | $1.12/100ml |  |  |
+| rice vinegar | Obento Rice Wine Vinegar 250ml | $2.79 | $1.12/100ml |  | 3.3 |
+| rice wine vinegar | Obento Rice Wine Vinegar 250ml | $2.79 | $1.12/100ml |  | 3.3 |
 | salt | Pams Iodised Table Salt 1kg | $1.49 | $0.15/100g |  |  |
 | sesame oil | Pams Sesame Oil 200ml | $5.29 | $2.65/100ml |  |  |
 | sesame seed | Sesame Seeds kg | $17.90 | $1.79/100g |  |  |
