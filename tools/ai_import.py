@@ -37,7 +37,11 @@ sys.path += [str(p) for p in ROOT.glob(".venv/lib/python%d.%d/site-packages" % s
 KEYS_FILE = ROOT / "config/gemini.keys"
 OMNI_KEY_FILE = ROOT / "config/omniroute.key"
 OMNI = "https://omniroute.masterchef.mom/v1/chat/completions"
-OMNI_MODEL = "free"
+# `free` is the unlimited one and the first choice; the others are what answered when it did not.
+# $OMNI_MODELS overrides, comma separated, best first.
+OMNI_MODELS = [m.strip() for m in (os.environ.get("OMNI_MODELS") or
+               "free, auto/fast, openrouter/openrouter/free, mistral/mistral-small-latest"
+               ).split(",") if m.strip()]
 SPEC = ROOT / "docs/extensions.md"
 TAGS = ROOT / "config/tags.conf"
 COOKWARE = ROOT / "config/cookware.conf"
@@ -367,13 +371,13 @@ def body(url, data=None):
     return {"contents": [{"parts": [{"text": text}]}], "tools": [{"url_context": {}}]}
 
 
-def omni(text):
+def omni(text, model=None):
     """The free OpenAI-compatible endpoint. None when it has no key or no answer."""
     key = os.environ.get("OMNIROUTE_KEY") or (OMNI_KEY_FILE.read_text().strip() if OMNI_KEY_FILE.exists() else "")
     if not key:
         return None
     req = urllib.request.Request(OMNI, data=json.dumps(
-        {"model": OMNI_MODEL, "messages": [{"role": "user", "content": text}]}).encode(),
+        {"model": model or OMNI_MODELS[0], "messages": [{"role": "user", "content": text}]}).encode(),
         headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
     try:
         # 3 minutes is generous for one page of markup; past that the endpoint is having a day
@@ -381,7 +385,7 @@ def omni(text):
         with urllib.request.urlopen(req, timeout=180) as r:
             return json.load(r)["choices"][0]["message"]["content"].strip() or None
     except Exception as e:
-        print(f"free endpoint: {type(e).__name__}", file=sys.stderr)
+        print(f"{model or OMNI_MODELS[0]}: {type(e).__name__}", file=sys.stderr)
         return None
 
 
@@ -414,20 +418,29 @@ def clean(resp):
 
 
 def unfence(text):
-    return re.sub(r"\A```[a-z]*\n|\n```\Z", "", text.strip()).strip()
+    text = re.sub(r"\A```[a-z]*\n|\n```\Z", "", text.strip()).strip()
+    # some models start straight at `title:` and only close the frontmatter
+    if re.match(r"^(title|servings|course|cuisine|tags|source|image|prep time):", text) \
+            and re.search(r"^---$", text, re.M):
+        text = "---\n" + text
+    return text
 
 
-def free(text, tries=3):
-    """The free endpoint, given a few goes. Everything that is not a video is its job:
-    gemini is for videos only, so a bad afternoon at the endpoint is a wait, not a failover."""
-    for n in range(tries):
-        out = omni(text)
-        if out:
-            return out
-        if n + 1 < tries:
-            print(f"free endpoint: no answer, retrying ({n + 2}/{tries})", file=sys.stderr)
-            time.sleep(5 * (n + 1))
-    sys.exit("the free endpoint is not answering — try again later (gemini is for videos only)")
+def free(text, rounds=2):
+    """Everything that is not a video is the free endpoint's job — gemini is for videos only —
+    so a bad afternoon there is a wait and a different model, never a failover to a keyed one.
+    One model at a time, best first, then round again after a pause."""
+    for n in range(rounds):
+        for model in OMNI_MODELS:
+            out = omni(text, model)
+            if out:
+                if model != OMNI_MODELS[0]:
+                    print(f"written by {model}", file=sys.stderr)
+                return out
+        if n + 1 < rounds:
+            time.sleep(10 * (n + 1))
+    sys.exit(f"none of {', '.join(OMNI_MODELS)} answered — try again later "
+             "(gemini is for videos only)")
 
 
 def recipe(url, model):
@@ -475,6 +488,7 @@ def selftest():
     assert "url_context" not in scraped and "1 egg" in scraped
     assert clean({"candidates": [{"content": {"parts": [{"text": " @egg{1} "}]}}]}) == "@egg{1}"
     assert unfence("```cooklang\n@egg{1}\n```") == "@egg{1}"
+    assert unfence("title: T\n---\n\n@egg{1}").startswith("---\ntitle: T")
     assert cookware_used("a #skillet{} then #oven{} and #kettle and simmer") == {"skillet", "oven", "kettle"}
     canon, missing = cookware_vocab()
     assert canon["instant pot"] == "pressure cooker" and "grill" in missing
