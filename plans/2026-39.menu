@@ -1,22 +1,16 @@
--- Week of 21 September 2026. Five cooking sessions, none over 20 minutes at the
--- bench except Sunday's bolognese, which is the freezer stock for the weeks after.
+-- Week of Mon 21 to Sun 27 September 2026. Cooking for one: three sessions, 14 portions,
+-- nothing over 15 minutes at the bench. Shopping happens Monday 6pm, so Monday's cook is
+-- the 10-minute one and the oven does the rest while the shopping gets put away.
 
 = 2026-09-21
 
-@./recipes/dinner/Slow Cooker Honey Mustard Chicken{}   -- 5 min in the morning, eats Mon + Tue
+@./recipes/dinner/Sticky Chinese Chicken Traybake{}   -- 10 min hands-on, 40 min oven. Eat one, 3 for the fridge.
+-- also: tip the chana lentils into a bowl of water before bed, they soak for Wednesday
 
 = 2026-09-23
 
-@./recipes/dinner/Spinach Chana Dal{}   -- soak the lentils Tuesday night
-
-= 2026-09-24
-
-@./recipes/dinner/Sticky Chinese Chicken Traybake{}
+@./recipes/dinner/Spinach Chana Dal{}   -- 15 min hands-on, 4 portions, freezes for 3 months
 
 = 2026-09-26
 
-@./recipes/dinner/Sausage and Sweet Potato Traybake{}
-
-= 2026-09-27
-
-@./recipes/dinner/Big Batch Bolognese{}   -- 12 portions, most of them for the freezer
+@./recipes/dinner/Sausage and Sweet Potato Traybake{}   -- 15 min hands-on, 6 portions

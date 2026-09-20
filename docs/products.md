@@ -64,7 +64,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | garlic clove | Jinning Greenway White Garlic 450g | $1.00 | $0.22/100g | 4 g |  |
 | garlic powder | Mrs Rogers Naturals Eco Garlic Powder 40g | $1.99 | $4.97/100g |  |  |
 | ghee | Eclipse Premium Ghee 750ml | $15.99 | $2.13/100ml |  | 884.3 |
-| ginger | Crushed Ginger 1kg | $11.09 | $1.11/100g |  |  |
+| ginger | Ginger kg | $6.99 | $0.70/100g |  |  |
 | green bean | Pams Green Round Beans 250g | $5.99 | $2.40/100g |  |  |
 | green capsicum | Value Capsicum 500g | $8.99 | $1.80/100g |  |  |
 | green pepper | Value Capsicum 500g | $8.99 | $1.80/100g | 180 g |  |
@@ -72,7 +72,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | ground cumin | Kashish Cumin Seeds 200g | $3.59 | $1.80/100g |  |  |
 | ground turmeric | Masterfoods Ground Turmeric 34g | $2.59 | $7.62/100g |  |  |
 | hoisin sauce | Lee Kum Kee Hoisin Sauce 240g | $5.99 | $2.50/100g |  | 238.3 |
-| honey | Pams Value Creamed Clover Blend Honey 1kg | $15.94 | $1.59/100g |  | 334.6 |
+| honey | Arataki Multi-Flora With Manuka Honey 500g | $8.49 | $1.70/100g |  | 320.3 |
 | instant ramen | Yum Yum Chicken Instant Noodles 5 x 60g | $2.79 | $0.93/100g | 85 g |  |
 | lemon | Lemons kg | $3.99 | $0.40/100g | 120 g |  |
 | lemon juice | Lemons kg | $3.99 | $0.40/100g |  |  |
@@ -122,7 +122,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | smoked paprika | Mrs Rogers Naturals Eco Ground Paprika 40g | $1.99 | $4.97/100g |  |  |
 | soy sauce | Pearl River Bridge Superior Dark Soy Sauce 500ml | $2.00 | $0.40/100ml |  | 120.0 |
 | spaghetti | Pasta Maria Spaghetti 400g | $1.29 | $0.32/100g |  | 365.7 |
-| spring onion | Mama San Chopped Spring Onion 454g | $4.99 | $1.10/100g | 15 g | 31.1 |
+| spring onion | Spring Onions ea | $2.99 | $2.99 each | 15 g |  |
 | sriracha sauce | Eaglobe Hot Chilli Sriracha Sauce 500ml | $5.99 | $1.20/100ml |  | 84.8 |
 | star anise | Mrs Rogers Premium Eco Star Anise 11g | $3.02 | $27.45/100g |  |  |
 | sugar | Chelsea White Sugar 1.5kg | $3.00 | $0.20/100g |  | 406.3 |
