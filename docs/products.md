@@ -36,7 +36,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | coconut milk | Trident Premium Coconut Milk 400ml | $2.00 | $0.50/100ml |  | 180.9 |
 | cold-pressed rapeseed oil | Pams Canola Oil 500ml | $1.79 | $0.36/100ml |  | 805.4 |
 | cooked rice | Fortune Long Grain Rice 1kg | $2.00 | $0.20/100g | 200 g |  |
-| coriander | Healthy n Fresh Prepacked Coriander 80g | $2.49 | $3.11/100g |  |  |
+| coriander | Healthy n Fresh Prepacked Coriander 80g | $2.49 | $3.11/100g | 30 g |  |
 | corn cob | Prepacked Sweetcorn 500g | $3.79 | $0.76/100g | 160 g |  |
 | cornflour | Pams Maize Cornflour 400g | $1.59 | $0.40/100g |  | 358.5 |
 | cucumber | Telegraph Cucumber ea | $3.00 | $3.00 each | 300 g |  |
@@ -65,6 +65,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | garlic powder | Mrs Rogers Naturals Eco Garlic Powder 40g | $1.99 | $4.97/100g |  |  |
 | ghee | Eclipse Premium Ghee 750ml | $15.99 | $2.13/100ml |  | 884.3 |
 | ginger | Ginger kg | $6.99 | $0.70/100g |  |  |
+| gnocchi | Diamond Gnocchi 500g | $0.99 | $0.20/100g |  | 165.9 |
 | green bean | Pams Green Round Beans 250g | $5.99 | $2.40/100g |  |  |
 | green capsicum | Value Capsicum 500g | $8.99 | $1.80/100g |  |  |
 | green pepper | Value Capsicum 500g | $8.99 | $1.80/100g | 180 g |  |
@@ -74,6 +75,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | hoisin sauce | Lee Kum Kee Hoisin Sauce 240g | $5.99 | $2.50/100g |  | 238.3 |
 | honey | Arataki Multi-Flora With Manuka Honey 500g | $8.49 | $1.70/100g |  | 320.3 |
 | instant ramen | Yum Yum Chicken Instant Noodles 5 x 60g | $2.79 | $0.93/100g | 85 g |  |
+| kale | Green Curly Kale ea | $3.99 | $3.99 each | 200 g |  |
 | lemon | Lemons kg | $3.99 | $0.40/100g | 120 g |  |
 | lemon juice | Lemons kg | $3.99 | $0.40/100g |  |  |
 | lemon wedges | Lemons kg | $3.99 | $0.40/100g | 120 g |  |
@@ -95,7 +97,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | oyster sauce | Haday Golden Label Oyster Cooking Sauce 530g | $4.89 | $0.92/100g |  | 111.9 |
 | paprika | Mrs Rogers Naturals Eco Ground Paprika 40g | $1.99 | $4.97/100g |  |  |
 | parmesan | Dairyworks Grated Parmesan Cheese 200g | $6.99 | $3.50/100g |  | 368.1 |
-| parsley | Pams Frilled Parsley ea | $3.99 | $3.99 each |  |  |
+| parsley | Pams Frilled Parsley ea | $3.99 | $3.99 each | 30 g |  |
 | pea | Pams Frozen Garden Peas 1kg | $3.19 | $0.32/100g |  | 80.3 |
 | peanut | Value Pack Roasted Salted Peanuts 400g | $4.29 | $1.07/100g |  | 566.4 |
 | peanut butter | Pams Smooth Peanut Butter 375g | $1.69 | $0.45/100g |  | 645.3 |
