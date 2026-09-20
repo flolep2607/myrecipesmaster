@@ -29,7 +29,10 @@
       {#- spoons are volume, and a millilitre costs what a gram costs -#}
       {%- set amount = val * (1000 if unit in ["kg", "l"] else spoons[unit] if unit in spoons else 1) -%}
     {%- elif counted and base == "each" -%}
-      {%- set amount = val -%}
+      {#- the till sells a bunch, the recipe counts stalks: config/unit_weights.conf says
+          how many are in one -#}
+      {%- set pack = db(nm ~ ".cost.units_per_pack") | default("", true) -%}
+      {%- set amount = (val / (pack | float)) if pack else val -%}
     {%- elif counted and gpu -%}
       {#- one clove, one onion: config/unit_weights.conf says what it weighs -#}
       {%- set amount = val * (gpu | float) -%}

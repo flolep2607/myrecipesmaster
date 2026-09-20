@@ -22,7 +22,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | carrot | Carrots kg | $1.00 | $0.10/100g | 80 g |  |
 | cashew nut | Pams Cashew Nuts 70g | $2.19 | $3.13/100g |  | 578.4 |
 | caster sugar | Pams Caster Sugar 1kg | $1.99 | $0.20/100g |  | 406.3 |
-| celery stick | Celery Half ea | $1.49 | $1.49 each |  |  |
+| celery stick | Celery Half ea | $1.49 | $1.49 each | 40 g |  |
 | chana lentil | Kashish Chana Dal Chickpea Split Lentil 1kg | $4.19 | $0.42/100g |  | 377.9 |
 | cheese | Value Cheddar Flavoured Processed Cheese Slices 500g | $6.49 | $1.30/100g | 20 g | 243.8 |
 | chicken breast | Skinless Chicken Breast kg | $14.99 | $1.50/100g | 170 g |  |

@@ -363,13 +363,20 @@ def to_base(value, unit, grams=None):
 
 
 def weights():
-    """{ingredient: grams for one of them} — one clove, one onion, one chicken breast."""
-    out = {}
+    """{ingredient: grams for one of them} — one clove, one onion, one chicken breast.
+    A trailing xN says how many are in the pack when the shelf sells it each: a bunch of
+    spring onions is one item at the till and eight in the recipe."""
+    out, packs = {}, {}
     for ln in (WEIGHTS_FILE.read_text().splitlines() if WEIGHTS_FILE.exists() else []):
         ln = ln.split("#")[0].strip()
-        if ln:
-            name, _, g = ln.rpartition(" ")
-            out[name.strip()] = float(g)
+        if not ln:
+            continue
+        if " x" in ln and ln.rsplit(" x", 1)[1].isdigit():
+            ln, n = ln.rsplit(" x", 1)
+            packs[ln.rpartition(" ")[0].strip()] = int(n)
+        name, _, g = ln.rpartition(" ")
+        out[name.strip()] = float(g)
+    weights.packs = packs
     return out
 
 
@@ -500,6 +507,8 @@ def write_price(conn, name, pid, store, label):
         f"# {label} — regenerate with ./tools/pns_db.py prices\n"
         + (f"per_unit: {per / 100:.6f}   # $ per {base}\nunit: {base}\n" if per else "")
         + (f"grams_per_unit: {gpu:g}\n" if gpu else "")
+        + (f"units_per_pack: {weights.packs[name]}\n"
+           if base == "each" and name in weights.packs else "")
         + f"promo: {1 if promo else 0}\nday: {day}\n")
     (d / "shopping.yml").write_text(
         f"name: {json.dumps(label)}\nurl: {product_url(pid)}\n"
