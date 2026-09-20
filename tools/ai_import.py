@@ -355,6 +355,18 @@ def audit_tags():
     print(f"{len(used)} tags outside the vocabulary" if used else "every tag is in the vocabulary")
 
 
+def tidy(text):
+    """The three things every model gets wrong, fixed without asking one: a count written as a
+    unit, minutes spelled long in the time keys, and multi-word cookware left unbraced — `#rice
+    cooker` parses as `#rice` followed by the word `cooker`."""
+    text = re.sub(r"\{(\d+(?:\.\d+)?)%each\}", r"{\1}", text)
+    text = re.sub(r"^((?:prep |cook )?time):\s*(\d+)\s*min(?:ute)?s?\b", r"\1: \2m", text, flags=re.M)
+    for name in sorted(set(cookware_vocab()[0].values()), key=len, reverse=True):
+        if " " in name:
+            text = re.sub(r"#" + re.escape(name) + r"(?!\{)", f"#{name}{{}}", text)
+    return text
+
+
 def parses(text):
     """Does our CookCLI accept this file? Shared recipes carry other people's units and habits."""
     out = subprocess.run(["cook", "recipe", "-f", "json"], input=text,
@@ -477,14 +489,14 @@ def recipe(url, model, only=None):
             return text
         # someone else's Cooklang, in Danish with Danish spoons: keep the recipe, redo the markup
         print("does not parse here — rewriting it", file=sys.stderr)
-        return unfence(free(prompt(url, text, "Recipe to rewrite, keeping every step and amount"))) + "\n"
+        return tidy(unfence(free(prompt(url, text, "Recipe to rewrite, keeping every step and amount")))) + "\n"
     meal = re.match(r"(?:mealdb:|https?://(?:www\.)?themealdb\.com/meal/)(\d+)", url)
     if meal:   # TheMealDB hands over measures and steps, so this is markup work, not reading
         data = mealdb(meal[1])
-        return unfence(free(prompt(data["source"], json.dumps(data, indent=1),
-                                   "Fields from TheMealDB"))) + "\n"
+        return tidy(unfence(free(prompt(data["source"], json.dumps(data, indent=1),
+                                        "Fields from TheMealDB")))) + "\n"
     if not is_url(url):   # a brief, not a page: the model writes the recipe from it
-        return unfence(free(prompt("kitchen idea", url, "What to cook"))) + "\n"
+        return tidy(unfence(free(prompt("kitchen idea", url, "What to cook")))) + "\n"
     if re.search(r"(youtube\.com|youtu\.be)/", url):   # the one thing only gemini can do
         # a compilation video holds several recipes and the prompt asks for one file, so the
         # model writes the first and stops: --only names which one to write
@@ -492,10 +504,10 @@ def recipe(url, model, only=None):
                                          "Ignore every other dish in the video."), model)))
         if not text:
             sys.exit("gemini returned nothing for this video")
-        return text + "\n"
+        return tidy(text) + "\n"
     # recipe-scrapers knows the site, or we fetch and strip the page ourselves — either way the
     # fields arrive here as text and the free endpoint writes the markup
-    return unfence(free(prompt(url, scrape(url) or page_text(url)))) + "\n"
+    return tidy(unfence(free(prompt(url, scrape(url) or page_text(url))))) + "\n"
 
 
 def selftest():
@@ -512,6 +524,8 @@ def selftest():
     assert clean({"candidates": [{"content": {"parts": [{"text": " @egg{1} "}]}}]}) == "@egg{1}"
     assert unfence("```cooklang\n@egg{1}\n```") == "@egg{1}"
     assert unfence("title: T\n---\n\n@egg{1}").startswith("---\ntitle: T")
+    assert tidy("prep time: 15min\nPut it in the #rice cooker, add @carrot{1%each}.") == \
+        "prep time: 15m\nPut it in the #rice cooker{}, add @carrot{1}."
     assert cookware_used("a #skillet{} then #oven{} and #kettle and simmer") == {"skillet", "oven", "kettle"}
     canon, missing = cookware_vocab()
     assert canon["instant pot"] == "pressure cooker" and "food processor" in missing

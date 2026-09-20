@@ -31,8 +31,12 @@ Web pages go through recipe-scrapers first (~660 sites, installed in `.venv`, gi
 rebuild with `uv venv --python /usr/bin/python3 .venv && uv pip install --python .venv/bin/python
 'recipe-scrapers[online]'`), so the model only writes markup around fields it was handed; a site
 recipe-scrapers doesn't know falls back to Gemini reading the page itself.
-Writing the markup is plain text work and always goes to the free OpenAI-compatible endpoint in
-`config/omniroute.key` (model `free`, gitignored, unlimited), and so is reading a page
+Writing the markup is plain text work and goes to an OpenAI-compatible endpoint. The chain is in
+`OMNI_MODELS` (override with `$OMNI_MODELS`, best first): a local proxy on `:9000` first, since it
+answers a recipe in about five seconds — models named `local/...` go there, `$LOCAL_ENDPOINT` moves
+it, and it is skipped silently when nothing is listening — then omniroute's `auto/fast` and its
+openrouter free router, with `free` last while opencode 403s underneath it. Keys in
+`config/omniroute.key` (gitignored, unlimited), and so is reading a page
 recipe-scrapers has no parser for — the page text is fetched and stripped locally. **Gemini is for
 YouTube videos and nothing else.** When the free endpoint is down the importer retries it three
 times and then stops with an error; it never fails over to Gemini, because that burns keyed quota
