@@ -10,6 +10,7 @@
   ./tools/ai_import.py tour Japanese          # a cuisine's dishes on TheMealDB, import by id
   ./tools/ai_import.py mealdb:53034           # import one of them, measures and all
   ./tools/ai_import.py search "smoky bean stew"  # semantic search over 50k recipes
+  ./tools/ai_import.py <video-url> --only "Patty Melt"   # one dish out of a compilation video
   ./tools/ai_import.py image "recipes/dinner/Name.cook"   # fetch its picture alongside it
   ./tools/ai_import.py tags                   # tags in use that config/tags.conf does not allow
   ./tools/ai_import.py selftest
@@ -40,7 +41,7 @@ OMNI = "https://omniroute.masterchef.mom/v1/chat/completions"
 # `free` is the unlimited one and the first choice; the others are what answered when it did not.
 # $OMNI_MODELS overrides, comma separated, best first.
 OMNI_MODELS = [m.strip() for m in (os.environ.get("OMNI_MODELS") or
-               "free, auto/fast, openrouter/openrouter/free, mistral/mistral-small-latest"
+               "free, auto/fast, openrouter/openrouter/free"
                ).split(",") if m.strip()]
 SPEC = ROOT / "docs/extensions.md"
 TAGS = ROOT / "config/tags.conf"
@@ -444,7 +445,7 @@ def free(text, rounds=2):
              "(gemini is for videos only)")
 
 
-def recipe(url, model):
+def recipe(url, model, only=None):
     """Writing the markup is plain text work and goes to the free endpoint, always.
     Gemini is for one thing: watching a video. A brief instead of a URL is text work too."""
     fed = re.match(rf"{FED}/recipes/(\d+)", url)
@@ -467,7 +468,10 @@ def recipe(url, model):
     if not is_url(url):   # a brief, not a page: the model writes the recipe from it
         return unfence(free(prompt("kitchen idea", url, "What to cook"))) + "\n"
     if re.search(r"(youtube\.com|youtu\.be)/", url):   # the one thing only gemini can do
-        text = unfence(clean(gemini(body(url), model)))
+        # a compilation video holds several recipes and the prompt asks for one file, so the
+        # model writes the first and stops: --only names which one to write
+        text = unfence(clean(gemini(body(url, only and f"Write only the recipe for: {only}. "
+                                         "Ignore every other dish in the video."), model)))
         if not text:
             sys.exit("gemini returned nothing for this video")
         return text + "\n"
@@ -497,6 +501,11 @@ def selftest():
 
 
 if __name__ == "__main__":
+    only = None
+    if "--only" in sys.argv:
+        i = sys.argv.index("--only")
+        only = sys.argv[i + 1]
+        del sys.argv[i:i + 2]
     args = [a for a in sys.argv[1:] if a != "-m"]
     if args[:1] == ["selftest"]:
         selftest()
@@ -524,4 +533,4 @@ if __name__ == "__main__":
     elif not args:
         sys.exit(__doc__)
     else:
-        sys.stdout.write(recipe(args[0], args[1] if len(args) > 1 else "gemini-3.8-flash"))
+        sys.stdout.write(recipe(args[0], args[1] if len(args) > 1 else "gemini-3.8-flash", only))
