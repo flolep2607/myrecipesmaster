@@ -377,7 +377,8 @@ def omni(text, model=None):
     if not key:
         return None
     req = urllib.request.Request(OMNI, data=json.dumps(
-        {"model": model or OMNI_MODELS[0], "messages": [{"role": "user", "content": text}]}).encode(),
+        {"model": model or OMNI_MODELS[0], "stream": False,   # 3.8.33 streams unless told not to
+         "messages": [{"role": "user", "content": text}]}).encode(),
         headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
     try:
         # 3 minutes is generous for one page of markup; past that the endpoint is having a day
