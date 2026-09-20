@@ -41,6 +41,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | chilli powder | Kashish Kashmiri Chilli Powder Spice 200g | $3.59 | $1.80/100g |  |  |
 | chinese broccoli | Bellaverde Sweet Stem Broccoli 250g | $3.99 | $1.60/100g |  |  |
 | chinese five-spice powder | Mrs Rogers Naturals Eco Chinese Five Spice 30g | $1.99 | $6.63/100g |  |  |
+| chinese sausage | Hellers Chinese Honey Sausages 1kg | $10.99 | $1.10/100g | 40 g | 197.4 |
 | chopped tomato | Pams Value Chopped Tomatoes in Juice 400g | $0.89 | $0.22/100g |  | 22.5 |
 | choy sum | Choy Sum ea | $2.99 | $2.99 each | 80 g |  |
 | coconut milk | Trident Premium Coconut Milk 400ml | $2.00 | $0.50/100ml |  | 180.9 |
@@ -139,7 +140,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | salt | Pams Iodised Table Salt 1kg | $1.49 | $0.15/100g |  |  |
 | sesame oil | Pams Sesame Oil 200ml | $5.29 | $2.65/100ml |  | 812.6 |
 | sesame seed | Sesame Seeds kg | $17.90 | $1.79/100g |  | 580.8 |
-| shallot | Brown Onions 10kg | $16.99 | $0.17/100g | 30 g |  |
+| shallot | Dragon & Phoenix Fried Shallots 100g | $2.89 | $2.89/100g | 30 g | 473.2 |
 | smoked bacon rasher | Hellers Manuka Smoked Rasher Bacon 200g | $3.00 | $1.50/100g | 25 g | 193.1 |
 | smoked paprika | Mrs Rogers Naturals Eco Ground Paprika 40g | $1.99 | $4.97/100g |  |  |
 | sour cream | Tatua Sour Cream 500g | $6.69 | $1.34/100g |  | 238.5 |

@@ -154,8 +154,10 @@ file does not parse here — other people's Cooklang carries Danish spoons and b
 `./tools/ai_import.py find "<words>"` searches the web sites and `cook "<words>"` the Federation.
 
 Prefer sourced recipes; `ai_import.py "<brief>"` writes one from a description, but that is a
-fallback for when nothing suitable is online. French sources are fine — imports are written in
-English so the names match `config/aisle.conf` and `config/products.map`. The site searches are
+fallback for when nothing suitable is online. French sources are fine, but **every recipe in the vault is written in English** — title, steps
+and ingredient names — whatever language the source is in. That is a hard rule, not a preference:
+an ingredient called `poulet` prices against nothing and lands in `[other]` on the shopping list.
+Only the `source:` url stays in its own language. The site searches are
 BBC Good Food, BBC Food, Marmiton, Budget Bytes, RecipeTin Eats and The Woks of Life, all
 parseable by recipe-scrapers.
 

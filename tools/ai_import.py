@@ -10,6 +10,7 @@
   ./tools/ai_import.py tour Japanese          # a cuisine's dishes on TheMealDB, import by id
   ./tools/ai_import.py mealdb:53034           # import one of them, measures and all
   ./tools/ai_import.py search "smoky bean stew"  # semantic search over 50k recipes
+  ./tools/ai_import.py brain:"clay pot chicken rice"  # import the top hit from that index
   ./tools/ai_import.py <video-url> --only "Patty Melt"   # one dish out of a compilation video
   ./tools/ai_import.py image "recipes/dinner/Name.cook"   # fetch its picture alongside it
   ./tools/ai_import.py tags                   # tags in use that config/tags.conf does not allow
@@ -81,8 +82,10 @@ Rules:
   @rice{{400%g}}(washed), never @rice{{400%g%washed}}.
 - Drop any metadata line you have nothing to put on it rather than leaving it empty, and never
   emit a `>> [mode]: ...` line.
-- Write the recipe in English even when the source is not: the aisle file, the pantry and the
-  product map are English. Keep the dish's own name if it has one (bolognaise, tartiflette).
+- Write the recipe in English even when the source is not — title, steps, ingredient names, every
+  word. This is not optional: the aisle file, the pantry and the product map are English, and a
+  French ingredient name prices against nothing. Keep the dish's own name if it has one
+  (bolognaise, tartiflette).
 - Tag every ingredient the first time the method uses it; later mentions are references, @&name{{qty%unit}},
   which add to the first amount. Modifiers @?optional and @-hidden are available too, and
   @./Other Recipe{{2%servings}} references another .cook file in the same folder — never @@name.
@@ -441,7 +444,9 @@ JSON_SYS = ("You return only one JSON object and nothing else — no prose, no c
             "Keys: title (string), servings (integer), course, cuisine, tags (array of strings), "
             "prep_time, cook_time, image, steps (array of strings, each one step of the method "
             "written in Cooklang). Leave out any key the source does not give. "
-            "The markup rules in the user message apply to the strings in steps.")
+            "The markup rules in the user message apply to the strings in steps. "
+            "Write everything in English — title, steps, ingredient names — whatever language "
+            "the source is in. This is not optional.")
 
 
 def omni(text, model=None, as_json=False):
@@ -541,6 +546,18 @@ def recipe(url, model, only=None):
         # someone else's Cooklang, in Danish with Danish spoons: keep the recipe, redo the markup
         print("does not parse here — rewriting it", file=sys.stderr)
         return tidy(unfence(free(prompt(url, text, "Recipe to rewrite, keeping every step and amount")))) + "\n"
+    if url.startswith("brain:"):
+        # the semantic index carries the whole recipe but no amounts, so the writer supplies them
+        hits = brain(url[6:], limit=1)
+        if not hits:
+            sys.exit("nothing in the index for that")
+        r = hits[0]
+        r["source_url"] = f"https://www.{r['source']}/recipe/{r['recipe_id']}"
+        note = ("The source lists ingredients without amounts: give each one a sensible amount for "
+                "the servings, and say so in a `-- ` comment under the frontmatter.")
+        data = json.dumps(r, indent=1) + "\n" + note
+        return (structured(r["source_url"], data, "Recipe from a recipe index")
+                or tidy(unfence(free(prompt(r["source_url"], data, "Recipe from a recipe index")))) + "\n")
     meal = re.match(r"(?:mealdb:|https?://(?:www\.)?themealdb\.com/meal/)(\d+)", url)
     if meal:   # TheMealDB hands over measures and steps, so this is markup work, not reading
         data = mealdb(meal[1])
