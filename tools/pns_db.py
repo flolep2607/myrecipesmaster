@@ -494,6 +494,13 @@ def write_price(conn, name, pid, store, label):
         "SELECT cents, unit_cents, unit_measure, promo, day FROM prices "
         "WHERE product_id = ? AND store_id = ? ORDER BY day DESC LIMIT 1", (pid, store)).fetchone()
     if not row:
+        # the default store does not stock this pin. Leaving the old files would price the
+        # ingredient against whatever it used to be pinned to, so say what it is and give no price
+        d = PRICE_DIR / slug(name)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "cost.yml").write_text(f"# {label} — not stocked at this store, so no price\n")
+        (d / "shopping.yml").write_text(
+            f"name: {json.dumps(label)}\nurl: {product_url(pid)}\nproduct_id: {pid}\n")
         return None
     cents, unit_cents, measure, promo, day = row
     per, base = per_base(unit_cents, measure)
@@ -670,7 +677,9 @@ def table():
             per, base = from_size(cents, size)
         unit = (f"${per / 100:.2f} each" if base == "each" else f"${per:.2f}/100{base}") if per else ""
         g = f"{grams[name]:g} g" if name in grams else ""
-        out.append(f"| {name} | {label} | ${cents / 100:.2f} | {unit} | {g} | {kcal or ''} |")
+        # a pin the default store does not stock has no price row here, and that is not a crash
+        price = f"${cents / 100:.2f}" if cents is not None else "not stocked"
+        out.append(f"| {name} | {label} | {price} | {unit} | {g} | {kcal or ''} |")
     return "\n".join(out) + "\n"
 
 

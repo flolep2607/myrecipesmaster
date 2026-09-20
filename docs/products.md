@@ -163,4 +163,5 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | white bread | Pams Value White Toast Fresh Sliced Bread 600g | $2.02 | $0.34/100g | 35 g | 258.1 |
 | white distilled vinegar | Pams White Vinegar 2l | $3.69 | $0.18/100ml |  |  |
 | white fish fillet | Pams Natural White Fish Fillets 1kg | $13.49 | $1.35/100g | 150 g | 55.7 |
+| white pepper | Pams Ground White Pepper 50g | not stocked |  |  |  |
 | yoghurt | De Winkel All Natural Plain Unsweetened Yoghurt 1kg | $5.49 | $0.55/100g |  | 41.3 |
