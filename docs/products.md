@@ -49,7 +49,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | cumin seed | Kashish Cumin Seeds 200g | $3.59 | $1.80/100g |  |  |
 | curry powder | Mrs Rogers Naturals Eco Curry Powder 40g | $1.99 | $4.97/100g |  |  |
 | dark soy sauce | Pearl River Bridge Superior Dark Soy Sauce 500ml | $2.00 | $0.40/100ml |  | 120.0 |
-| dashi powder | Pams Standard UHT Milk 1l | $2.09 | $0.21/100ml | 8 g | 65.7 |
+| dashi powder | Shimaya Bonito Flavoured Dashi Seasoning 50g | $4.69 | $9.38/100g | 8 g | 255.7 |
 | dijon mustard | Masterfoods Dijonnaise Mustard 250g | $5.19 | $2.08/100g |  | 233.0 |
 | double cream | Lewis Road Creamery Premium Double Cream 300ml | $5.01 | $1.67/100ml |  | 449.3 |
 | dried mixed herb | Mrs Rogers Naturals Eco Mixed Herbs 10g | $1.99 | $19.90/100g |  |  |
