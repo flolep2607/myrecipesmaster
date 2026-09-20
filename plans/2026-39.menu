@@ -1,16 +1,13 @@
--- Week of Mon 21 to Sun 27 September 2026. Cooking for one: three sessions, 14 portions,
--- nothing over 15 minutes at the bench. Shopping happens Monday 6pm, so Monday's cook is
--- the 10-minute one and the oven does the rest while the shopping gets put away.
+-- Week of Mon 21 to Sun 27 September 2026, cooking for one. Two sessions, 16 portions.
+-- Monday's is the 10-minute one because the shop does not get home until 9pm; Wednesday's
+-- is the big one that carries the rest of the week and fills the freezer.
 
 = 2026-09-21
 
-@./recipes/dinner/Sticky Chinese Chicken Traybake{}   -- 10 min hands-on, 40 min oven. Eat one, 3 for the fridge.
--- also: tip the chana lentils into a bowl of water before bed, they soak for Wednesday
+-- 4 portions: Monday night, Tuesday lunch, Tuesday night, one spare
+@./recipes/dinner/Sticky Chinese Chicken Traybake{}
 
 = 2026-09-23
 
-@./recipes/dinner/Spinach Chana Dal{}   -- 15 min hands-on, 4 portions, freezes for 3 months
-
-= 2026-09-26
-
-@./recipes/dinner/Sausage and Sweet Potato Traybake{}   -- 15 min hands-on, 6 portions
+-- 12 portions: Wednesday to Sunday, dinner and lunch, and two spare for the freezer
+@./recipes/dinner/Big Batch Bolognese{}
