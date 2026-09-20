@@ -1,20 +1,19 @@
--- Week of Mon 21 to Sun 27 September 2026, cooking for one — but one who eats two plates.
--- Everything below is scaled x2 for that reason: a "serving" in a recipe is a normal plate,
--- and a meal here is two of them. 13 meals to cover, Monday dinner through Sunday.
--- Shopping Monday evening at Royal Oak.
+-- Week of Mon 21 to Sun 27 September 2026, cooking for one, no breakfast.
+-- A serving in both these recipes is now one whole meal of about 1250 kcal, so two a day is
+-- the 2500 target and the shopping list, the costs and the nutrition all read in meals.
+-- 13 meals to cover: Monday dinner through Sunday. Shopping Monday evening at Royal Oak.
 
 = 2026-09-21
 
--- 8 servings = 4 meals: Monday night, Tuesday lunch, Tuesday night, Wednesday lunch.
+-- 4 meals: Monday night, Tuesday lunch, Tuesday night, Wednesday lunch.
 -- The rice cooker one, because the shop does not get home until 9pm. Ten minutes of chopping,
--- everything in cold, press the button.
--- x2 is 1.2 kg of rice, which is 8 rice-cooker cups — fine in a 10-cup machine, too much for a
--- 5-cup one. If yours is small, cook it as written twice instead.
+-- everything in cold, press the button. x2 is 700 g of rice, under 5 rice-cooker cups, so it
+-- fits an ordinary machine.
 @./recipes/dinner/Japanese Chicken Rice Cooker{2}
 
 = 2026-09-23
 
--- 24 servings = 12 meals: Wednesday dinner through Sunday is 9 of them, the other 3 frozen.
--- ~30 minutes hands-on (chopping) and 2 hours in the oven doing nothing.
--- x2 is about 10 litres, so it goes in two dishes side by side in the same oven, same times.
-@./recipes/dinner/Big Batch Bolognese{2}
+-- 10 meals: Wednesday dinner through Sunday is 9 of them, one spare in the freezer.
+-- ~30 minutes hands-on (chopping) and 2 hours in the oven doing nothing. At x1.25 it is about
+-- 6 litres, so it goes in two dishes side by side in the same oven, same times.
+@./recipes/dinner/Big Batch Bolognese{1.25}
