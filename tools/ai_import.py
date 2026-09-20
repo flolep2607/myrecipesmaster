@@ -293,8 +293,9 @@ def tag_vocab():
 
 
 def cookware_vocab():
-    """{name or alias: the name a recipe should use}, and the names we do not own."""
-    canon, missing, section = {}, set(), ""
+    """{name or alias: the name a recipe should use}, the names we do not own, and the ones
+    that live somewhere else — a park barbecue is cookable, it just needs leaving the house."""
+    canon, missing, away, section = {}, set(), set(), ""
     for line in COOKWARE.read_text().splitlines():
         line = line.split("#")[0].strip()
         if line.startswith("["):
@@ -305,6 +306,9 @@ def cookware_vocab():
             canon.update({a: name for a in [name] + [x.strip() for x in aliases.split(",") if x.strip()]})
             if section == "missing":
                 missing.add(name)
+            elif section == "away":
+                away.add(name)
+    cookware_vocab.away = away
     return canon, missing
 
 
@@ -316,17 +320,20 @@ def cookware_used(text):
 def audit_cookware():
     """Cookware the vault names that config/cookware.conf does not know, or does not have."""
     canon, missing = cookware_vocab()
-    unknown, absent, alias = {}, {}, {}
+    away = cookware_vocab.away
+    unknown, absent, alias, out = {}, {}, {}, {}
     for f in sorted(ROOT.glob("recipes/*/*.cook")):
         for item in cookware_used(f.read_text()):
             name = canon.get(item)
-            bucket = unknown if name is None else absent if name in missing else alias if name != item else {}
+            bucket = (unknown if name is None else absent if name in missing
+                      else out if name in away else alias if name != item else {})
             bucket.setdefault(item, []).append(f.stem)
     for label, found in (("not in config/cookware.conf", unknown), ("we do not have", absent),
+                         ("a trip to a public barbecue", out),
                          ("another name for one we have", alias)):
         for item, files in sorted(found.items(), key=lambda kv: -len(kv[1])):
             print(f"{item:22} {label:26} {', '.join(sorted(set(files)))}")
-    if not unknown and not absent and not alias:
+    if not unknown and not absent and not alias and not out:
         print("every recipe cooks with gear we have")
 
 
@@ -496,7 +503,8 @@ def selftest():
     assert unfence("title: T\n---\n\n@egg{1}").startswith("---\ntitle: T")
     assert cookware_used("a #skillet{} then #oven{} and #kettle and simmer") == {"skillet", "oven", "kettle"}
     canon, missing = cookware_vocab()
-    assert canon["instant pot"] == "pressure cooker" and "grill" in missing
+    assert canon["instant pot"] == "pressure cooker" and "food processor" in missing
+    assert canon["bbq"] == "grill" and "grill" in cookware_vocab.away
     print("ok")
 
 

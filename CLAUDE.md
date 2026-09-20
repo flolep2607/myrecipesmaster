@@ -172,10 +172,12 @@ vocabulary does not allow; add the tag to the file or retag the recipe.
 **Cookware** — `config/cookware.conf` is what the kitchen has: oven, air fryer, slow cooker,
 pressure cooker, kettle, pans and the usual bowls. One name per thing, with the other names for it
 folded onto the right of the `=` (`frying pan = skillet, non-stick frying pan, pan`), and a
-`[missing]` section for gear we do not own — grill, food processor, stand mixer, microwave, deep
-fryer. Imports are handed the left-hand names. `./tools/ai_import.py cookware` flags a recipe
-calling for gear we lack, using a name the file does not know, or using an alias instead of the
-canonical name; a recipe wanting something from `[missing]` needs adapting before it can be cooked.
+`[missing]` section for gear we do not own — griddle, food processor, stand mixer, deep fryer —
+and an `[away]` one for what is reachable but not here: New Zealand parks and beaches keep free
+public barbecues, so a recipe on the grill is a trip out, not a recipe to rewrite. Imports are
+handed the left-hand names. `./tools/ai_import.py cookware` flags a recipe calling for gear we
+lack, one needing a trip to a barbecue, a name the file does not know, or an alias used instead of
+the canonical name.
 
 **Pictures** — `./tools/ai_import.py image "recipes/dinner/Name.cook"` saves the recipe's picture
 beside it as `Name.jpg`, which is the convention `cook server` and the apps read. Imports carry an
