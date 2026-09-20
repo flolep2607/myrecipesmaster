@@ -526,16 +526,24 @@ def write_price(conn, name, pid, store, label):
 def write_nutrition(conn, name, pid, label):
     """datastore/<name>/nutrition.yml, straight from the enrich data. None when the
     product carries no nutrition — fresh produce mostly, and anything enrich hasn't reached."""
-    row = conn.execute("SELECT basis, kcal, protein, carbs, fat FROM nutrition WHERE product_id = ?",
-                       (pid,)).fetchone()
+    row = conn.execute(
+        "SELECT basis, kcal, protein, carbs, sugars, fat, sat_fat, fibre, sodium_mg "
+        "FROM nutrition WHERE product_id = ?", (pid,)).fetchone()
     if not row or row[1] is None:
         return None
-    basis, kcal, protein, carbs, fat = row
+    basis, kcal, protein, carbs, sugars, fat, sat_fat, fibre, sodium = row
     d = NUT_DIR / slug(name)
     d.mkdir(parents=True, exist_ok=True)
+    # grams_per_unit rides along because a recipe writes counted things without a unit
+    # (@onion{4}), and nutrition.j2 needs it to turn 4 onions into grams
+    gpu = weights().get(name)
     (d / "nutrition.yml").write_text(
-        f"# per 100 {basis} — {label}\nkcal: {kcal}\nprotein: {protein}\n"
-        f"carbs: {carbs}\nfat: {fat}\n")
+        f"# per 100 {basis} — {label}\n"
+        f"kcal: {kcal}\nprotein: {protein}\ncarbs: {carbs}\nfat: {fat}\n"
+        + "".join(f"{k}: {v}\n" for k, v in
+                  (("sugars", sugars), ("sat_fat", sat_fat), ("fibre", fibre), ("sodium_mg", sodium))
+                  if v is not None)
+        + (f"grams_per_unit: {gpu:g}\n" if gpu else ""))
     return kcal
 
 

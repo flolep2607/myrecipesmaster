@@ -3,3 +3,7 @@ kcal: 0.2
 protein: 1.0
 carbs: 1.0
 fat: 1.0
+sugars: 1.0
+sat_fat: 1.0
+sodium_mg: 1.0
+grams_per_unit: 200

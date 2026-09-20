@@ -1,13 +1,15 @@
 {#- Per-recipe nutrition from datastore/<name>/nutrition.yml, the layout
     cooklang.org/guides/reports documents: one folder per ingredient, one file per topic.
-    ponytail: grams/ml only (g,kg,ml,l) + per-unit for countable items.
-    No density conversion (cups/tbsp -> g). Add g_per_cup per ingredient if you ever need it. -#}
-{%- set ns = namespace(kcal=0, protein=0, carbs=0, fat=0, missing=[]) -%}
+    Values are per 100 g/ml. Spoons convert as volume the way the price side does
+    (tsp 5 ml, tbsp 15 ml, cup 250 ml, a ml counted as a gram); a counted ingredient
+    (@onion{4}) needs grams_per_unit in its nutrition.yml or it is read as 4 x 100 g. -#}
+{%- set ns = namespace(kcal=0, protein=0, carbs=0, sugars=0, fat=0, sat_fat=0, fibre=0,
+                       sodium=0, missing=[], noweight=[]) -%}
 {%- for i in ingredients -%}
   {%- set key = underscore(i.name | lower | split("|") | first | trim("?&+-@") | replace("'", "")) ~ ".nutrition" -%}
   {%- set kcal = db(key ~ ".kcal") -%}
   {%- if kcal == "" -%}
-    {%- set ns.missing = ns.missing + [i.name] -%}
+    {%- if i.quantity %}{% set ns.missing = ns.missing + [i.name] %}{% endif -%}
   {%- else -%}
     {%- set q = i.quantity | default(none) -%}
     {%- set unit = (q.unit | default("")) | lower if q else "" -%}
@@ -18,22 +20,48 @@
       {%- set f = val / 100 -%}
     {%- elif unit == "kg" or unit == "l" -%}
       {%- set f = val * 10 -%}
+    {%- elif unit == "tsp" -%}
+      {%- set f = val * 0.05 -%}
+    {%- elif unit == "tbsp" -%}
+      {%- set f = val * 0.15 -%}
+    {%- elif unit == "cup" -%}
+      {%- set f = val * 2.5 -%}
+    {%- elif unit == "" -%}
+      {#- counted: 4 onions is 4 x grams_per_unit, not 4 x 100 g -#}
+      {%- set gpu = db(key ~ ".grams_per_unit") -%}
+      {%- if gpu == "" -%}
+        {%- if val > 0 %}{% set ns.noweight = ns.noweight + [i.name] %}{% endif -%}
+        {%- set f = 0 -%}
+      {%- else -%}
+        {%- set f = val * (gpu | float) / 100 -%}
+      {%- endif -%}
     {%- else -%}
-      {%- set f = val -%}
+      {#- a unit with no conversion (pinch, knob, slice): counted as nothing rather than as 100 g -#}
+      {%- if val > 0 %}{% set ns.noweight = ns.noweight + [i.name] %}{% endif -%}
+      {%- set f = 0 -%}
     {%- endif -%}
-    {%- set ns.kcal = ns.kcal + (kcal | float) * f -%}
-    {%- set ns.protein = ns.protein + ((db(key ~ ".protein") or 0) | float) * f -%}
-    {%- set ns.carbs = ns.carbs + ((db(key ~ ".carbs") or 0) | float) * f -%}
-    {%- set ns.fat = ns.fat + ((db(key ~ ".fat") or 0) | float) * f -%}
+    {%- set ns.kcal    = ns.kcal    + (kcal | float) * f -%}
+    {%- set ns.protein = ns.protein + ((db(key ~ ".protein")   or 0) | float) * f -%}
+    {%- set ns.carbs   = ns.carbs   + ((db(key ~ ".carbs")     or 0) | float) * f -%}
+    {%- set ns.sugars  = ns.sugars  + ((db(key ~ ".sugars")    or 0) | float) * f -%}
+    {%- set ns.fat     = ns.fat     + ((db(key ~ ".fat")       or 0) | float) * f -%}
+    {%- set ns.sat_fat = ns.sat_fat + ((db(key ~ ".sat_fat")   or 0) | float) * f -%}
+    {%- set ns.fibre   = ns.fibre   + ((db(key ~ ".fibre")     or 0) | float) * f -%}
+    {%- set ns.sodium  = ns.sodium  + ((db(key ~ ".sodium_mg") or 0) | float) * f -%}
   {%- endif -%}
 {%- endfor -%}
 {%- set srv = (metadata.servings | default(1)) | float -%}
 # {{ metadata.title | default("Recipe") }} — nutrition
 
-| per | kcal | protein | carbs | fat |
-|---|---|---|---|---|
-| total | {{ ns.kcal | round }} | {{ ns.protein | round }}g | {{ ns.carbs | round }}g | {{ ns.fat | round }}g |
-| serving (x{{ srv | round }}) | {{ (ns.kcal / srv) | round }} | {{ (ns.protein / srv) | round }}g | {{ (ns.carbs / srv) | round }}g | {{ (ns.fat / srv) | round }}g |
+| per | kcal | protein | carbs | sugar | fat | sat fat | fibre | salt |
+|---|---|---|---|---|---|---|---|---|
+| total | {{ ns.kcal | round }} | {{ ns.protein | round }}g | {{ ns.carbs | round }}g | {{ ns.sugars | round }}g | {{ ns.fat | round }}g | {{ ns.sat_fat | round }}g | {{ ns.fibre | round }}g | {{ (ns.sodium * 2.5 / 1000) | round(1) }}g |
+| serving (x{{ srv | round }}) | {{ (ns.kcal / srv) | round }} | {{ (ns.protein / srv) | round }}g | {{ (ns.carbs / srv) | round }}g | {{ (ns.sugars / srv) | round }}g | {{ (ns.fat / srv) | round }}g | {{ (ns.sat_fat / srv) | round }}g | {{ (ns.fibre / srv) | round }}g | {{ (ns.sodium * 2.5 / 1000 / srv) | round(1) }}g |
+
+{{ ((ns.protein / srv * 4) / (ns.kcal / srv) * 100) | round if ns.kcal else 0 }}% of the calories are protein.
 {% if ns.missing %}
 missing from datastore: {{ ns.missing | join(", ") }}
+{%- endif %}
+{%- if ns.noweight %}
+counted with no grams_per_unit, left out: {{ ns.noweight | join(", ") }}
 {%- endif %}
