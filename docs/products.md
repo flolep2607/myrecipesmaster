@@ -17,6 +17,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | black pepper | Pams Ground Black Pepper 50g | $2.99 | $5.98/100g |  |  |
 | brown onion | Brown Onions 10kg | $16.99 | $0.17/100g | 180 g |  |
 | brown rice | SunRice Australian Brown Medium Grain Rice 5kg | $15.21 | $0.30/100g |  | 175.7 |
+| brown sugar | Pams Soft Brown Sugar 1kg | $1.99 | $0.20/100g |  | 392.0 |
 | butter | Pams Pure Butter 500g | $7.39 | $1.48/100g |  | 724.2 |
 | cajun seasoning | Mrs Rogers Naturals Eco Cajun Seasoning 30g | $2.31 | $7.70/100g |  |  |
 | canned tomato | Pams Value Chopped Tomatoes in Juice 400g | $0.89 | $0.22/100g |  | 22.5 |
