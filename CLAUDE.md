@@ -40,7 +40,11 @@ openrouter free router, with `free` last while opencode 403s underneath it. Keys
 recipe-scrapers has no parser for — the page text is fetched and stripped locally. **Gemini is for
 YouTube videos and nothing else.** When the free endpoint is down the importer retries it three
 times and then stops with an error; it never fails over to Gemini, because that burns keyed quota
-on work the free endpoint does for nothing. Read the output back and check the parse either way.
+on work the free endpoint does for nothing. A page import asks for JSON — one object with the fields and the steps as Cooklang strings — and
+this side writes the frontmatter, so `servings` is a number, the times are in cooklang's form and a
+tag outside `config/tags.conf` never lands. `strict: true` on a json_schema is accepted and then
+ignored by the proxy, but `json_object` plus a system message holds; a model that answers prose
+anyway falls back to writing the whole file. Read the output back and check the parse either way.
 
 **Weekly plan** — write `plans/YYYY-WW.menu`, the standard menu format: a section per day and
 one recipe reference per meal, scaled in braces. Paths are relative to this repo root, so run

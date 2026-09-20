@@ -355,6 +355,47 @@ def audit_tags():
     print(f"{len(used)} tags outside the vocabulary" if used else "every tag is in the vocabulary")
 
 
+def render(obj):
+    """A JSON recipe into a .cook file. Python writes the frontmatter, so servings is a number,
+    the times are in cooklang's form and a tag the vocabulary does not know never lands."""
+    allowed, out = set(tag_vocab()), []
+    keys = [("title", "title"), ("servings", "servings"), ("course", "course"),
+            ("cuisine", "cuisine"), ("tags", "tags"), ("prep time", "prep_time"),
+            ("cook time", "cook_time"), ("time", "time"), ("image", "image")]
+    for name, key in keys:
+        v = obj.get(key) if obj.get(key) is not None else obj.get(name)
+        if v in (None, "", [], {}):
+            continue
+        if name == "tags":
+            v = [t for t in (v if isinstance(v, list) else str(v).split(",")) if t.strip() in allowed]
+            if not v:
+                continue
+            v = ", ".join(t.strip() for t in v)
+        out.append(f"{name}: {v}")
+    steps = obj.get("steps") or []
+    body = "\n\n".join(s.strip() for s in steps if s and s.strip())
+    return "---\n" + "\n".join(out) + "\n---\n\n" + body + "\n"
+
+
+def structured(url, data, header="Fields extracted from the page"):
+    """Ask for JSON and build the file here. None when the model will not produce JSON, which
+    puts the caller back on the plain-text path."""
+    raw = omni(prompt(url, data, header), as_json=True)
+    if not raw:
+        return None
+    try:
+        obj = json.loads(unfence(raw))
+    except ValueError:
+        print("model did not return json, writing the file the long way", file=sys.stderr)
+        return None
+    if not obj.get("steps"):
+        return None
+    obj.setdefault("source", url)
+    text = tidy(render(obj))
+    text = text.replace("---\n\n", f"source: {url}\n---\n\n", 1) if "source:" not in text else text
+    return text if parses(text) else None
+
+
 def tidy(text):
     """The three things every model gets wrong, fixed without asking one: a count written as a
     unit, minutes spelled long in the time keys, and multi-word cookware left unbraced — `#rice
@@ -396,9 +437,17 @@ def body(url, data=None):
     return {"contents": [{"parts": [{"text": text}]}], "tools": [{"url_context": {}}]}
 
 
-def omni(text, model=None):
+JSON_SYS = ("You return only one JSON object and nothing else — no prose, no code fence. "
+            "Keys: title (string), servings (integer), course, cuisine, tags (array of strings), "
+            "prep_time, cook_time, image, steps (array of strings, each one step of the method "
+            "written in Cooklang). Leave out any key the source does not give. "
+            "The markup rules in the user message apply to the strings in steps.")
+
+
+def omni(text, model=None, as_json=False):
     """An OpenAI-compatible endpoint: the local proxy for `local/` models, omniroute otherwise.
-    None when it has no key or no answer."""
+    `as_json` asks for one JSON object instead of a file — json_schema is accepted and then
+    ignored here, but json_object plus a system message holds. None when there is no answer."""
     model = model or OMNI_MODELS[0]
     local = model.startswith("local/")
     key = "local" if local else (os.environ.get("OMNIROUTE_KEY") or
@@ -407,7 +456,9 @@ def omni(text, model=None):
         return None
     req = urllib.request.Request(LOCAL if local else OMNI, data=json.dumps(
         {"model": model.split("local/")[-1], "stream": False,   # newer omniroute streams by default
-         "messages": [{"role": "user", "content": text}]}).encode(),
+         **({"response_format": {"type": "json_object"}} if as_json else {}),
+         "messages": ([{"role": "system", "content": JSON_SYS}] if as_json else [])
+                     + [{"role": "user", "content": text}]}).encode(),
         headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
     try:
         # 3 minutes is generous for one page of markup; past that the endpoint is having a day
@@ -506,8 +557,9 @@ def recipe(url, model, only=None):
             sys.exit("gemini returned nothing for this video")
         return tidy(text) + "\n"
     # recipe-scrapers knows the site, or we fetch and strip the page ourselves — either way the
-    # fields arrive here as text and the free endpoint writes the markup
-    return tidy(unfence(free(prompt(url, scrape(url) or page_text(url))))) + "\n"
+    # fields arrive here as text and the endpoint writes the markup, as JSON when it will
+    data = scrape(url) or page_text(url)
+    return structured(url, data) or tidy(unfence(free(prompt(url, data)))) + "\n"
 
 
 def selftest():
@@ -526,6 +578,10 @@ def selftest():
     assert unfence("title: T\n---\n\n@egg{1}").startswith("---\ntitle: T")
     assert tidy("prep time: 15min\nPut it in the #rice cooker, add @carrot{1%each}.") == \
         "prep time: 15m\nPut it in the #rice cooker{}, add @carrot{1}."
+    card = render({"title": "T", "servings": "2", "tags": ["quick", "not-a-tag"],
+                   "prep_time": "10m", "steps": ["Fry @egg{1}.", "Serve."]})
+    assert card.startswith("---\ntitle: T\nservings: 2\n") and "tags: quick\n" in card
+    assert card.endswith("Fry @egg{1}.\n\nServe.\n") and "not-a-tag" not in card
     assert cookware_used("a #skillet{} then #oven{} and #kettle and simmer") == {"skillet", "oven", "kettle"}
     canon, missing = cookware_vocab()
     assert canon["instant pot"] == "pressure cooker" and "food processor" in missing
