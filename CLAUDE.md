@@ -13,7 +13,9 @@ datastore/<ingredient>/nutrition.yml  nutrition per ingredient (see below)
 templates/          Jinja2 report templates for `cook report`
 tools/pns.py        PAK'nSAVE API client + one-off price lookup (guest token, no login)
 tools/pns_db.py     catalogue + price history in data/paknsave.db (weekly sync)
-config/paknsave.stores  store ids, first is the default: Manukau, Royal Oak, Sylvia Park
+config/paknsave.stores  store ids, first is the default and everything pins and prices
+                        against it: Royal Oak, Manukau, Sylvia Park. Reorder to shop elsewhere,
+                        then `./tools/pns_db.py prices` to rewrite every price file.
 data/               SQLite DB and sync logs — gitignored, this is the price history, back it up
 plans/              weekly meal plans (YYYY-WW.menu, recipe references per day)
 docs/               vendored cooklang spec/conventions/extensions, `./docs/refresh.py` updates them

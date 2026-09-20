@@ -9,5 +9,7 @@
 {%- set clean = i.name | lower | split("|") | first | trim("?&+-@") -%}
 {%- set nm = underscore(clean | replace("'", "")) -%}
 {%- set url = db(nm ~ ".shopping.url") | default("", true) -%}
-| {{ clean | titleize }} | {{ i.quantities }} | {% if url %}[{{ db(nm ~ ".shopping.name") }}]({{ url }}){% else %}not pinned{% endif %} | {% if url %}{{ db(nm ~ ".shopping.price") | float | number_to_currency }}{% endif %} |
+{#- a pin the store does not stock has a name and a url but no price, so guard it separately -#}
+{%- set price = db(nm ~ ".shopping.price") | default("", true) -%}
+| {{ clean | titleize }} | {{ i.quantities }} | {% if url %}[{{ db(nm ~ ".shopping.name") }}]({{ url }}){% else %}not pinned{% endif %} | {% if price %}{{ price | float | number_to_currency }}{% elif url %}not stocked here{% endif %} |
 {% endfor %}
