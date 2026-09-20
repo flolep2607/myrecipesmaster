@@ -7,6 +7,9 @@
   ./tools/ai_import.py find "tofu stir fry"   # real recipe urls to import
   ./tools/ai_import.py cook tofu              # search recipes.cooklang.org, already cooklang
   ./tools/ai_import.py have tofu "spring onion"  # recipes built from ingredients you have
+  ./tools/ai_import.py tour Japanese          # a cuisine's dishes on TheMealDB, import by id
+  ./tools/ai_import.py mealdb:53034           # import one of them, measures and all
+  ./tools/ai_import.py search "smoky bean stew"  # semantic search over 50k recipes
   ./tools/ai_import.py image "recipes/dinner/Name.cook"   # fetch its picture alongside it
   ./tools/ai_import.py tags                   # tags in use that config/tags.conf does not allow
   ./tools/ai_import.py selftest
@@ -15,11 +18,10 @@ Use when `cook import` has no parser for the site, or the source is a video.
 Web pages go through recipe-scrapers first (~660 sites, .venv) so the model only
 does the markup; sites it doesn't know fall back to Gemini reading the page.
 
-Two providers, because only one of them can do the hard half: once recipe-scrapers
-has the fields, writing markup is plain text work and goes to the OpenAI-compatible
-endpoint in config/omniroute.key (model `free`). Reading a page or watching a video
-needs Gemini, so YouTube links and unscrapable sites go there, and anything the free
-endpoint fumbles falls back to it too.
+Two providers, split by what only one of them can do. Writing the markup is plain text
+work and always goes to the OpenAI-compatible endpoint in config/omniroute.key (model
+`free`) — scraped fields, pages we fetch and strip ourselves, TheMealDB, briefs, all of
+it, retried if the endpoint is having a bad day. Gemini is for videos, and nothing else.
 
 Keys: config/gemini.keys, one per line (gitignored), or $GEMINI_API_KEYS
 comma-separated. A random key starts each run and quota/server errors fall
@@ -153,6 +155,42 @@ def federation(query, limit=10):
             seen.add(rid)
             out.append((f"{FED}/recipes/{rid}", title))
     return out[:limit]
+
+
+MEALDB = "https://www.themealdb.com/api/json/v1/1"   # ~200 cuisines, real measures, a source page
+BRAIN = "https://recipes.aidatanorge.no/mcp"          # semantic search over 50k recipes, via MCP
+
+
+def mealdb(mid):
+    """One TheMealDB meal as the fields block the prompt takes. The measures are there, so this
+    is the same plain-text job as a scraped page: no page to read, nothing to invent."""
+    m = json.loads(fetch(f"{MEALDB}/lookup.php?i={mid}"))["meals"][0]
+    ing = [f"{(m[f'strMeasure{i}'] or '').strip()} {m[f'strIngredient{i}'].strip()}".strip()
+           for i in range(1, 21) if (m.get(f"strIngredient{i}") or "").strip()]
+    return {"title": m["strMeal"], "cuisine": m["strArea"], "course": m["strCategory"],
+            "image": m["strMealThumb"], "ingredients": ing, "instructions": m["strInstructions"],
+            "source": m["strSource"] or m["strYoutube"] or f"https://www.themealdb.com/meal/{mid}"}
+
+
+def tour(area):
+    """What TheMealDB holds for one cuisine — `tour Japanese`, `tour Moroccan`."""
+    meals = json.loads(fetch(f"{MEALDB}/filter.php?a={urllib.parse.quote(area)}")).get("meals")
+    return [(m["idMeal"], m["strMeal"]) for m in (meals or [])]
+
+
+def brain(query, limit=6):
+    """Semantic search over 50k recipes. Ingredients come back without amounts, so a hit is a
+    lead: the real recipe is on the source page the record names."""
+    body = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "search_recipes", "arguments": {"query": query, "limit": limit}}}
+    req = urllib.request.Request(BRAIN, data=json.dumps(body).encode(),
+                                 headers={**UA, "Content-Type": "application/json",
+                                          "Accept": "application/json, text/event-stream"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        raw = r.read().decode()
+    # fastmcp answers as one server-sent event whose data is the JSON-RPC reply
+    hit = json.loads(raw.split("data: ", 1)[-1])["result"]["content"][0]["text"]
+    return json.loads(hit)
 
 
 RADAR = "https://www.reciperadar.com/api/recipes/search"   # openculinary, search by ingredient
@@ -338,10 +376,12 @@ def omni(text):
         {"model": OMNI_MODEL, "messages": [{"role": "user", "content": text}]}).encode(),
         headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
     try:
-        with urllib.request.urlopen(req, timeout=600) as r:
+        # 3 minutes is generous for one page of markup; past that the endpoint is having a day
+        # and Gemini will answer faster than waiting out a 10-minute socket
+        with urllib.request.urlopen(req, timeout=180) as r:
             return json.load(r)["choices"][0]["message"]["content"].strip() or None
     except Exception as e:
-        print(f"free endpoint: {type(e).__name__}, falling back to gemini", file=sys.stderr)
+        print(f"free endpoint: {type(e).__name__}", file=sys.stderr)
         return None
 
 
@@ -368,12 +408,6 @@ def gemini(payload, model):
     sys.exit(f"all keys exhausted ({last})")
 
 
-def google(query, model="gemini-3.8-flash"):
-    """Gemini with Search grounding. Use it when you need pages that exist, not remembered ones."""
-    return clean(gemini({"contents": [{"parts": [{"text": query}]}],
-                         "tools": [{"google_search": {}}]}, model))
-
-
 def clean(resp):
     parts = resp["candidates"][0].get("content", {}).get("parts", [])
     return "".join(p["text"] for p in parts if "text" in p).strip()
@@ -383,10 +417,22 @@ def unfence(text):
     return re.sub(r"\A```[a-z]*\n|\n```\Z", "", text.strip()).strip()
 
 
+def free(text, tries=3):
+    """The free endpoint, given a few goes. Everything that is not a video is its job:
+    gemini is for videos only, so a bad afternoon at the endpoint is a wait, not a failover."""
+    for n in range(tries):
+        out = omni(text)
+        if out:
+            return out
+        if n + 1 < tries:
+            print(f"free endpoint: no answer, retrying ({n + 2}/{tries})", file=sys.stderr)
+            time.sleep(5 * (n + 1))
+    sys.exit("the free endpoint is not answering — try again later (gemini is for videos only)")
+
+
 def recipe(url, model):
-    """Scraped fields are plain text work for the free endpoint; reading the page
-    or the video is Gemini's job, and so is anything the free endpoint drops.
-    A brief instead of a URL is plain text work too — the model writes the recipe."""
+    """Writing the markup is plain text work and goes to the free endpoint, always.
+    Gemini is for one thing: watching a video. A brief instead of a URL is text work too."""
     fed = re.match(rf"{FED}/recipes/(\d+)", url)
     if fed or url.endswith(".cook"):   # already Cooklang: take the file as written
         text = fetch(f"{FED}/api/recipes/{fed[1]}/download" if fed else url)
@@ -398,20 +444,22 @@ def recipe(url, model):
             return text
         # someone else's Cooklang, in Danish with Danish spoons: keep the recipe, redo the markup
         print("does not parse here — rewriting it", file=sys.stderr)
-        return unfence(omni(prompt(url, text, "Recipe to rewrite, keeping every step and amount"))
-                       or "") + "\n"
+        return unfence(free(prompt(url, text, "Recipe to rewrite, keeping every step and amount"))) + "\n"
+    meal = re.match(r"(?:mealdb:|https?://(?:www\.)?themealdb\.com/meal/)(\d+)", url)
+    if meal:   # TheMealDB hands over measures and steps, so this is markup work, not reading
+        data = mealdb(meal[1])
+        return unfence(free(prompt(data["source"], json.dumps(data, indent=1),
+                                   "Fields from TheMealDB"))) + "\n"
     if not is_url(url):   # a brief, not a page: the model writes the recipe from it
-        return unfence(omni(prompt("kitchen idea", url, "What to cook")) or "") + "\n"
-    video = re.search(r"(youtube\.com|youtu\.be)/", url)
-    data = None if video else scrape(url)
-    if not (data or video):
-        data = page_text(url)   # recipe-scrapers has no parser for this site: read it ourselves
-    text = omni(prompt(url, data)) if data else None
-    text = text or clean(gemini(body(url, data), model))
-    text = unfence(text)
-    if not text:
-        sys.exit("empty response from both providers")
-    return text + "\n"
+        return unfence(free(prompt("kitchen idea", url, "What to cook"))) + "\n"
+    if re.search(r"(youtube\.com|youtu\.be)/", url):   # the one thing only gemini can do
+        text = unfence(clean(gemini(body(url), model)))
+        if not text:
+            sys.exit("gemini returned nothing for this video")
+        return text + "\n"
+    # recipe-scrapers knows the site, or we fetch and strip the page ourselves — either way the
+    # fields arrive here as text and the free endpoint writes the markup
+    return unfence(free(prompt(url, scrape(url) or page_text(url)))) + "\n"
 
 
 def selftest():
@@ -448,6 +496,13 @@ if __name__ == "__main__":
     elif args[:1] == ["have"]:
         for r in radar(args[1:], limit=8):
             print(f"{r['time'] or '?':>4} min  {r['title'][:44]:46} {r['url']}")
+    elif args[:1] == ["tour"]:
+        for mid, name in tour(" ".join(args[1:])):
+            print(f"  mealdb:{mid}  {name}")
+    elif args[:1] == ["search"]:
+        for r in brain(" ".join(args[1:])):
+            src = f"{r.get('source', '?')}/{r.get('recipe_id', '')}"
+            print(f"{(r.get('total_time') or '?'):>4} min  {r['title'][:46]:48} {src}")
     elif args[:1] == ["cook"]:
         for u, title in federation(" ".join(args[1:])):
             print(f"{title}\n  {u}")

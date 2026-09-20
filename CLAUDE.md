@@ -31,11 +31,12 @@ Web pages go through recipe-scrapers first (~660 sites, installed in `.venv`, gi
 rebuild with `uv venv --python /usr/bin/python3 .venv && uv pip install --python .venv/bin/python
 'recipe-scrapers[online]'`), so the model only writes markup around fields it was handed; a site
 recipe-scrapers doesn't know falls back to Gemini reading the page itself.
-Writing the markup is plain text work and goes to the free OpenAI-compatible endpoint in
+Writing the markup is plain text work and always goes to the free OpenAI-compatible endpoint in
 `config/omniroute.key` (model `free`, gitignored, unlimited), and so is reading a page
-recipe-scrapers has no parser for — the page text is fetched and stripped locally. Gemini is kept
-for the one thing only it can do, watching a video, and as the fallback when the free endpoint
-drops a request. Read the output back and check the parse either way.
+recipe-scrapers has no parser for — the page text is fetched and stripped locally. **Gemini is for
+YouTube videos and nothing else.** When the free endpoint is down the importer retries it three
+times and then stops with an error; it never fails over to Gemini, because that burns keyed quota
+on work the free endpoint does for nothing. Read the output back and check the parse either way.
 
 **Weekly plan** — write `plans/YYYY-WW.menu`, the standard menu format: a section per day and
 one recipe reference per meal, scaled in braces. Paths are relative to this repo root, so run
@@ -149,6 +150,18 @@ fallback for when nothing suitable is online. French sources are fine — import
 English so the names match `config/aisle.conf` and `config/products.map`. The site searches are
 BBC Good Food, BBC Food, Marmiton, Budget Bytes, RecipeTin Eats and The Woks of Life, all
 parseable by recipe-scrapers.
+
+**A world tour** — `./tools/ai_import.py tour Japanese` lists what TheMealDB holds for a cuisine
+(~200 areas, though the free tier only has meals for some — Indian, Lebanese and Korean come back
+empty). Each hit prints as `mealdb:<id>`, and `./tools/ai_import.py mealdb:53372` imports it: the
+API hands over measures, steps, a picture and the original page, so it is markup work for the free
+endpoint, with nothing to read and nothing to invent. Check where a meal came from before importing
+— plenty of TheMealDB's entries are BBC Good Food underneath.
+
+`./tools/ai_import.py search "<words>"` is semantic search over 50k recipes
+(recipes.aidatanorge.no, an MCP server answering over plain HTTP). It knows what a dish is like
+rather than what it is called, and returns time, difficulty and nutrition. Its ingredient lists
+carry no amounts, so a hit is a lead: the real recipe is on the food.com page the record names.
 
 **Tags** — `config/tags.conf` is the whole vocabulary, grouped into effort, method, diet and main
 ingredient. Imports are handed the list and may use two to five of them; nothing else goes in a
