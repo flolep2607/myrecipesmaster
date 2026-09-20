@@ -7,6 +7,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | allspice | Mrs Rogers Naturals Eco Ground Allspice 30g | $1.99 | $6.63/100g |  |  |
 | avocado | Primor Prepacked Avocados 1kg | $5.99 | $0.60/100g | 200 g | 0.2 |
 | barbecue sauce | Pams Smokey BBQ Sauce 560g | $2.69 | $0.48/100g |  | 115.9 |
+| basmati rice | Dawaat Gold Everyday Basmati Rice 5kg | $13.69 | $0.27/100g |  | 348.0 |
 | bay leaf | Urja Bay Leaves 100g | $2.99 | $2.99/100g | 0.2 g | 393.9 |
 | bean sprout | Pams Mung Bean Sprouts 200g | $2.49 | $1.25/100g | 30 g |  |
 | beef | Beef Rump Steak kg | $22.99 | $2.30/100g |  |  |
@@ -20,9 +21,11 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | brown sugar | Pams Soft Brown Sugar 1kg | $1.99 | $0.20/100g |  | 392.0 |
 | butter | Pams Pure Butter 500g | $7.39 | $1.48/100g |  | 724.2 |
 | cajun seasoning | Mrs Rogers Naturals Eco Cajun Seasoning 30g | $2.31 | $7.70/100g |  |  |
+| canned lentil | Pams Brown Lentils In Brine 400g | $1.09 | $0.27/100g |  | 88.0 |
 | canned tomato | Pams Value Chopped Tomatoes in Juice 400g | $0.89 | $0.22/100g |  | 22.5 |
 | canned tuna in olive oil | Pacific Crown Sandwich Tuna In Oil 170g | $1.49 | $0.88/100g | 185 g | 198.4 |
 | caper | Delmaine Surfine Capers 100g | $4.09 | $4.09/100g |  | 33.9 |
+| cardamom pod | Mrs Rogers Premium Eco Cardamom Pods 20g | $4.55 | $22.75/100g | 0.3 g |  |
 | carrot | Carrots kg | $1.00 | $0.10/100g | 80 g |  |
 | cashew nut | Pams Cashew Nuts 70g | $2.19 | $3.13/100g |  | 578.4 |
 | caster sugar | Pams Caster Sugar 1kg | $1.99 | $0.20/100g |  | 406.3 |
@@ -117,11 +120,13 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | plain wholemeal flour | Pams Wholemeal Flour 1.5kg | $2.19 | $0.15/100g |  | 337.0 |
 | pork mince | Hellers Pork Mince 400g | $7.99 | $2.00/100g |  |  |
 | pork sausage | Pams Italian Pork Sausages 450g | $8.49 | $1.89/100g | 60 g | 231.4 |
+| potato | Potatoes 10kg | $14.99 | $0.15/100g | 150 g |  |
 | potato starch | Double Rings Superior Potato Starch 454g | $4.39 | $0.97/100g |  | 308.3 |
 | raw prawn | Fisherking Raw Stir-Fry Prawns 800g | $13.99 | $1.75/100g |  | 63.3 |
 | red capsicum | Red Capsicum ea | $2.99 | $2.99 each |  |  |
 | red chilli | Check Red Chilli Vegetables 200g | $2.59 | $1.29/100g | 12 g | 30.6 |
 | red curry paste | Exotic Food Red Curry Paste 220g | $4.69 | $2.13/100g |  | 167.1 |
+| red food colouring | Pams Lemon Baking Juice 250ml | $1.00 | $0.40/100ml |  | 13.9 |
 | red onion | Peeled Red Onions kg | $3.99 | $0.40/100g | 150 g |  |
 | red wine | Velluto Rosso Soft & Smooth Red Wine Cask 3l | $29.49 | $0.98/100ml |  |  |
 | red wine vinegar | Delmaine Italian Red Wine Vinegar 500ml | $4.79 | $0.96/100ml |  |  |
@@ -145,6 +150,7 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | star anise | Mrs Rogers Premium Eco Star Anise 11g | $3.02 | $27.45/100g |  |  |
 | sugar | Chelsea White Sugar 1.5kg | $3.00 | $0.20/100g |  | 406.3 |
 | sunflower oil | Pams Sunflower Oil 2l | $10.19 | $0.51/100ml |  | 805.4 |
+| sushi rice | SunRice Australian Sushi Rice 1kg | $4.04 | $0.40/100g |  | 351.3 |
 | sweet potato | Orange Kumara kg | $4.49 | $0.45/100g | 300 g |  |
 | tempeh | Tonzu Organic Tempeh 250g | $6.19 | $2.48/100g |  | 175.2 |
 | thyme | Superb Herb Cut Thyme 15g | $4.79 | $31.93/100g |  |  |
@@ -156,3 +162,4 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | white bread | Pams Value White Toast Fresh Sliced Bread 600g | $2.02 | $0.34/100g | 35 g | 258.1 |
 | white distilled vinegar | Pams White Vinegar 2l | $3.69 | $0.18/100ml |  |  |
 | white fish fillet | Pams Natural White Fish Fillets 1kg | $13.49 | $1.35/100g | 150 g | 55.7 |
+| yoghurt | De Winkel All Natural Plain Unsweetened Yoghurt 1kg | $5.49 | $0.55/100g |  | 41.3 |

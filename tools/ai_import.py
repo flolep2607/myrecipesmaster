@@ -38,10 +38,15 @@ sys.path += [str(p) for p in ROOT.glob(".venv/lib/python%d.%d/site-packages" % s
 KEYS_FILE = ROOT / "config/gemini.keys"
 OMNI_KEY_FILE = ROOT / "config/omniroute.key"
 OMNI = "https://omniroute.masterchef.mom/v1/chat/completions"
-# `free` is the unlimited one and the first choice; the others are what answered when it did not.
-# $OMNI_MODELS overrides, comma separated, best first.
+# a local OpenAI-compatible proxy, when one is running: no round trip, no quota, ~5s a recipe.
+# Model names prefixed `local/` go here instead of omniroute.
+LOCAL = os.environ.get("LOCAL_ENDPOINT", "http://localhost:9000") + "/v1/chat/completions"
+# Best first; $OMNI_MODELS overrides, comma separated. The local proxy answers in seconds and is
+# skipped without complaint when it is not running. `free` is the unlimited one and would belong
+# near the front, but it routes through opencode, whose free tier 403s and whose keyed connection
+# 401s — a minute of waiting per import — so it sits last until those credentials are sorted.
 OMNI_MODELS = [m.strip() for m in (os.environ.get("OMNI_MODELS") or
-               "free, auto/fast, openrouter/openrouter/free"
+               "local/swe-2-high, auto/fast, openrouter/openrouter/free, free"
                ).split(",") if m.strip()]
 SPEC = ROOT / "docs/extensions.md"
 TAGS = ROOT / "config/tags.conf"
@@ -380,21 +385,27 @@ def body(url, data=None):
 
 
 def omni(text, model=None):
-    """The free OpenAI-compatible endpoint. None when it has no key or no answer."""
-    key = os.environ.get("OMNIROUTE_KEY") or (OMNI_KEY_FILE.read_text().strip() if OMNI_KEY_FILE.exists() else "")
+    """An OpenAI-compatible endpoint: the local proxy for `local/` models, omniroute otherwise.
+    None when it has no key or no answer."""
+    model = model or OMNI_MODELS[0]
+    local = model.startswith("local/")
+    key = "local" if local else (os.environ.get("OMNIROUTE_KEY") or
+                                 (OMNI_KEY_FILE.read_text().strip() if OMNI_KEY_FILE.exists() else ""))
     if not key:
         return None
-    req = urllib.request.Request(OMNI, data=json.dumps(
-        {"model": model or OMNI_MODELS[0], "stream": False,   # 3.8.33 streams unless told not to
+    req = urllib.request.Request(LOCAL if local else OMNI, data=json.dumps(
+        {"model": model.split("local/")[-1], "stream": False,   # newer omniroute streams by default
          "messages": [{"role": "user", "content": text}]}).encode(),
         headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
     try:
         # 3 minutes is generous for one page of markup; past that the endpoint is having a day
         # and Gemini will answer faster than waiting out a 10-minute socket
         with urllib.request.urlopen(req, timeout=180) as r:
-            return json.load(r)["choices"][0]["message"]["content"].strip() or None
+            msg = json.load(r)["choices"][0]["message"]
+        # some routed models answer with an empty content and put the text in reasoning
+        return (msg.get("content") or msg.get("reasoning_content") or "").strip() or None
     except Exception as e:
-        print(f"{model or OMNI_MODELS[0]}: {type(e).__name__}", file=sys.stderr)
+        print(f"{model}: {type(e).__name__}", file=sys.stderr)
         return None
 
 
