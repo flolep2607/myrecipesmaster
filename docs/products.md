@@ -105,7 +105,8 @@ Written by `./tools/pns_db.py prices`; edit `config/products.map` and `config/un
 | pickled ginger | Healthy n Fresh Sushi Ginger 125g | $2.79 | $2.23/100g |  |  |
 | plain flour | Pams Pure Plain Flour 1.5kg | $2.19 | $0.15/100g |  | 351.3 |
 | plain wholemeal flour | Pams Wholemeal Flour 1.5kg | $2.19 | $0.15/100g |  | 337.0 |
-| pork sausage | Pork Flavoured Sausages kg | $11.99 | $1.20/100g | 60 g |  |
+| pork mince | Hellers Pork Mince 400g | $7.99 | $2.00/100g |  |  |
+| pork sausage | Pams Italian Pork Sausages 450g | $8.49 | $1.89/100g | 60 g | 231.4 |
 | raw prawn | Fisherking Raw Stir-Fry Prawns 800g | $13.99 | $1.75/100g |  | 63.3 |
 | red capsicum | Red Capsicum ea | $2.99 | $2.99 each |  |  |
 | red chilli | Check Red Chilli Vegetables 200g | $2.59 | $1.29/100g | 12 g | 30.6 |
